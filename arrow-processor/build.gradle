@@ -1,0 +1,69 @@
+plugins {
+    id 'scala'
+}
+
+group 'nl.tudelft.nonnenmacher'
+version '1.0-SNAPSHOT'
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compile "org.scala-lang:scala-library:" + scalaVersion
+    compile "org.scala-lang:scala-reflect:" + scalaVersion
+    compile "org.scala-lang:scala-compiler:" + scalaVersion
+
+    compile 'org.apache.arrow:arrow-vector:0.16.0'
+    compile 'org.apache.arrow:arrow-plasma:0.16.0'
+
+    //USE JUnit 4 instead because scalatest is not compatible with jUni5
+    testCompile 'org.scalatest:scalatest_2.12:3.0.1'
+    testImplementation('junit:junit:4.13')
+}
+
+configurations.all {
+    resolutionStrategy {
+        // Jackson versions used by Spark
+        // force them bc otherwise 'org.apache.arrow:arrow-vector:0.16.0' overwrites them to incompatible versions
+        force('com.fasterxml.jackson.core:jackson-core:2.7.9',
+                'com.fasterxml.jackson.core:jackson-annotations:2.6.7',
+                'com.fasterxml.jackson.core:jackson-databind:2.6.7.3',
+                'com.fasterxml.jackson.module:jackson-module-paranamer:2.7.9')
+
+    }
+}
+
+def libraryPaths = [file("${project(':arrow-processor-native').buildDir}/lib/main/debug").absolutePath,
+                    '/Users/fabian/Documents/masters/masterthesis/arrow/cpp/release/release']
+test {
+    systemProperty "java.library.path", libraryPaths.join(':')
+}
+
+def nativeClasses = ['nl.tudelft.ewi.abs.nonnenmacher.ArrowProcessorJni']
+
+task generateNativeHeaders(type: Exec) {
+
+    dependsOn(compileScala)
+
+    def compileOutput = compileScala.outputs.files[0].getAbsolutePath()
+
+    inputs.files( nativeClasses.collect{ "$compileOutput/${it.replace('.', '/')}.class" } )
+    outputs.dir("$project.buildDir/headers")
+
+    commandLine "$System.env.JAVA_HOME/bin/javah"
+
+    def scalaLibs = "$System.env.SCALA_HOME/lib"
+
+    args('-cp', "$scalaLibs/scala-library.jar:$scalaLibs/scala-reflect.jar:$compileOutput")
+
+    args('-d', outputs.files[0].absolutePath)
+
+    args(nativeClasses)
+}
+
+project(':arrow-processor-native').afterEvaluate {
+    test.dependsOn(project(':arrow-processor-native').assemble)
+}

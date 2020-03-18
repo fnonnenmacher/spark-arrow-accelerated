@@ -1,0 +1,52 @@
+plugins {
+    id 'scala'
+}
+
+group 'nl.tudelft.nonnenmacher'
+version '1.0-SNAPSHOT'
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compile project(':arrow-processor')
+
+    compile "org.scala-lang:scala-library:" + scalaVersion
+    compile "org.scala-lang:scala-reflect:" + scalaVersion
+    compile "org.scala-lang:scala-compiler:" + scalaVersion
+
+    compile "org.apache.spark:spark-sql_2.12:$sparkVersion"
+    compile "org.apache.spark:spark-catalyst_2.12:$sparkVersion"
+    compile "org.apache.spark:spark-core_2.12:$sparkVersion"
+
+    compile 'org.apache.arrow:arrow-vector:0.16.0'
+    compile 'org.apache.arrow:arrow-plasma:0.16.0'
+
+    //USE JUnit 4 instead because scalatest is not compatible with jUni5
+    testCompile 'org.scalatest:scalatest_2.12:3.0.1'
+    testImplementation('junit:junit:4.13')
+}
+
+configurations.all {
+    resolutionStrategy {
+        // Jackson versions used by Spark
+        // force them bc otherwise 'org.apache.arrow:arrow-vector:0.16.0' overwrites them to incompatible versions
+        force('com.fasterxml.jackson.core:jackson-core:2.7.9',
+                'com.fasterxml.jackson.core:jackson-annotations:2.6.7',
+                'com.fasterxml.jackson.core:jackson-databind:2.6.7.3',
+                'com.fasterxml.jackson.module:jackson-module-paranamer:2.7.9')
+    }
+}
+
+def libraryPaths = [file("${project(':arrow-processor-native').buildDir}/lib/main/debug").absolutePath,
+                    '/Users/fabian/Documents/masters/masterthesis/arrow/cpp/release/release']
+test {
+    systemProperty "java.library.path", libraryPaths.join(':')
+}
+
+project(':arrow-processor-native').afterEvaluate {
+    test.dependsOn(project(':arrow-processor-native').assemble)
+}

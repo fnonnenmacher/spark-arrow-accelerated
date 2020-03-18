@@ -1,0 +1,26 @@
+plugins {
+    id 'cpp-library'
+}
+
+//TODO ENV-VAR
+def arrowRoot = "/Users/fabian/Documents/masters/masterthesis/arrow"
+
+Task generateHeaders = project(':arrow-processor').generateNativeHeaders
+
+library {
+    binaries.configureEach {
+        compileTask.get().compilerArgs.add("-v")
+        compileTask.get().compilerArgs.add("--std=c++11")
+        compileTask.get().compilerArgs.add("-Wall")
+        compileTask.get().includes("${org.gradle.internal.jvm.Jvm.current().javaHome}/include")
+        compileTask.get().includes("${org.gradle.internal.jvm.Jvm.current().javaHome}/include/darwin")
+        compileTask.get().includes(generateHeaders.outputs.files[0].absolutePath)
+        compileTask.get().includes("$arrowRoot/cpp")
+        compileTask.get().compilerArgs.add('-mmacosx-version-min=10.9')
+        linkTask.get().linkerArgs.add('-mmacosx-version-min=10.9')
+        linkTask.get().lib("$arrowRoot/cpp/release/release/libplasma.dylib")
+        linkTask.get().lib("$arrowRoot/cpp/release/release/libarrow.dylib")
+
+        compileTask.get().dependsOn(generateHeaders)
+    }
+}

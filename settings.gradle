@@ -1,0 +1,5 @@
+rootProject.name = 'spark-example'
+
+include 'arrow-processor-native'
+include 'arrow-processor'
+include 'spark-extension'
