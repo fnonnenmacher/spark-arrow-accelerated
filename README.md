@@ -17,9 +17,10 @@
 ## Build 
 
 1. [Build Appache Arrow](https://arrow.apache.org/docs/developers/cpp/building.html) with the options `DARROW_PLASMA=ON` and `DARROW_PLASMA_JAVA_CLIENT=ON`
-2. Set the root dir of the arrow project as env variable `export ARROW_ROOT=/path/to/arrow`
-3. [Start the plasma server](https://github.com/apache/arrow/blob/master/cpp/apidoc/tutorials/plasma.md) e.g. `./plasma-store-server -m 1000000000 -s /tmp/plasma`
-4. Run the gradle build (including tests) `./gradlew build`
+2. Install it from the release dir: `sudo make install`
+3. Add the plasma-java library manually `release/libplasma_java.so /usr/local/lib64/` or `cp release/libplasma_java.dylib /usr/local/lib`
+4. [Start the plasma server](https://github.com/apache/arrow/blob/master/cpp/apidoc/tutorials/plasma.md) e.g. `./plasma-store-server -m 1000000000 -s /tmp/plasma`
+5. Run the gradle build (including tests) `./gradlew build`
 
 ## Project structure
 
