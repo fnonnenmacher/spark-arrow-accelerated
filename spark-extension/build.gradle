@@ -41,12 +41,17 @@ configurations.all {
     }
 }
 
+def arrowRoot = System.getenv('ARROW_ROOT') ?: {throw new GradleException("Environemnt variable'ARROW_ROOT' is not set.") }()
+
 def libraryPaths = [file("${project(':arrow-processor-native').buildDir}/lib/main/debug").absolutePath,
-                    '/Users/fabian/Documents/masters/masterthesis/arrow/cpp/release/release']
+                    "$arrowRoot/cpp/release/release"]
 test {
     systemProperty "java.library.path", libraryPaths.join(':')
 }
 
+compileTestScala.dependsOn(project.compileScala)
+
 project(':arrow-processor-native').afterEvaluate {
     test.dependsOn(project(':arrow-processor-native').assemble)
+
 }

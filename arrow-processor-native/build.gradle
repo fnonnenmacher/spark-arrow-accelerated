@@ -1,26 +1,38 @@
+import org.gradle.internal.jvm.Jvm
+import static org.apache.tools.ant.taskdefs.condition.Os.*
+
 plugins {
     id 'cpp-library'
 }
 
-//TODO ENV-VAR
-def arrowRoot = "/Users/fabian/Documents/masters/masterthesis/arrow"
+
+def arrowRoot = System.getenv('ARROW_ROOT') ?: {throw new GradleException("Environemnt variable'ARROW_ROOT' is not set.") }()
 
 Task generateHeaders = project(':arrow-processor').generateNativeHeaders
 
 library {
     binaries.configureEach {
+        compileTask.get().dependsOn(generateHeaders)
+
         compileTask.get().compilerArgs.add("-v")
         compileTask.get().compilerArgs.add("--std=c++11")
         compileTask.get().compilerArgs.add("-Wall")
-        compileTask.get().includes("${org.gradle.internal.jvm.Jvm.current().javaHome}/include")
-        compileTask.get().includes("${org.gradle.internal.jvm.Jvm.current().javaHome}/include/darwin")
+        compileTask.get().includes("${Jvm.current().javaHome}/include")
         compileTask.get().includes(generateHeaders.outputs.files[0].absolutePath)
         compileTask.get().includes("$arrowRoot/cpp")
-        compileTask.get().compilerArgs.add('-mmacosx-version-min=10.9')
-        linkTask.get().linkerArgs.add('-mmacosx-version-min=10.9')
-        linkTask.get().lib("$arrowRoot/cpp/release/release/libplasma.dylib")
-        linkTask.get().lib("$arrowRoot/cpp/release/release/libarrow.dylib")
 
-        compileTask.get().dependsOn(generateHeaders)
+        if (isFamily(FAMILY_MAC)) {
+            compileTask.get().includes("${Jvm.current().javaHome}/include/darwin")
+            compileTask.get().compilerArgs.add('-mmacosx-version-min=10.9')
+            linkTask.get().linkerArgs.add('-mmacosx-version-min=10.9')
+            linkTask.get().lib("$arrowRoot/cpp/release/release/libplasma.dylib")
+            linkTask.get().lib("$arrowRoot/cpp/release/release/libarrow.dylib")
+        }else if (isFamily(FAMILY_UNIX)) {
+            compileTask.get().includes("${Jvm.current().javaHome}/include/linux")
+            linkTask.get().lib("$arrowRoot/cpp/release/release/libplasma.so")
+            linkTask.get().lib("$arrowRoot/cpp/release/release/libplasma.a")
+            linkTask.get().lib("$arrowRoot/cpp/release/release/libarrow.so")
+            linkTask.get().lib("$arrowRoot/cpp/release/release/libarrow.a")
+        }
     }
 }
