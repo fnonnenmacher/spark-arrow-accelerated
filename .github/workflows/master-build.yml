@@ -1,0 +1,20 @@
+name: Gradle build
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Runs the gradle tests in container fnonnenmacher/arrow-plasma-java
+      run: |
+        docker run \
+        -v ${{ github.workspace }}:/app fnonnenmacher/arrow-plasma-java:latest \
+        /bin/sh -c "./run_tests.sh"
