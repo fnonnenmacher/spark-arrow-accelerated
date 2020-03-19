@@ -17,4 +17,4 @@ jobs:
       run: |
         docker run \
         -v ${{ github.workspace }}:/app fnonnenmacher/arrow-plasma-java:latest \
-        /bin/sh -c "./run_tests.sh"
+        /bin/bash -c "./run_tests.sh"
