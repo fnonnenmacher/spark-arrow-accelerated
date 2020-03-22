@@ -9,9 +9,8 @@ plugins {
 Task generateHeaders = project(':arrow-processor').generateNativeHeaders
 
 library {
-    source.from file('src')
-    privateHeaders.from file('src')
-    publicHeaders.from generateHeaders.outputs.files[0]
+    privateHeaders.from generateHeaders.outputs.files[0]
+    privateHeaders.from '/usr/local/include'
 
     binaries.configureEach {
         compileTask.get().dependsOn(generateHeaders)
@@ -22,16 +21,24 @@ library {
         compileTask.get().includes("${Jvm.current().javaHome}/include")
 
         if (isFamily(FAMILY_MAC)) {
+            compileTask.get().toolChain.set(toolChains.withType(Clang)[0])
             compileTask.get().includes("${Jvm.current().javaHome}/include/darwin")
             compileTask.get().compilerArgs.add('-mmacosx-version-min=10.9')
+
             linkTask.get().linkerArgs.add('-mmacosx-version-min=10.9')
             linkTask.get().lib("/usr/local/lib/libplasma.dylib")
             linkTask.get().lib("/usr/local/lib/libarrow.dylib")
-
+            linkTask.get().lib("/usr/local/lib/libfletcher.dylib")
+            linkTask.get().lib("/usr/local/lib/libfletcher_echo.dylib")
+            linkTask.get().linkerArgs.add("--std=c++11")
+            linkTask.get().toolChain.set(toolChains.withType(Clang)[0])
         } else if (isFamily(FAMILY_UNIX)) {
             compileTask.get().includes("${Jvm.current().javaHome}/include/linux")
+
             linkTask.get().lib("/usr/local/lib64/libplasma.so")
             linkTask.get().lib("/usr/local/lib64/libarrow.so")
+            linkTask.get().lib("/usr/local/lib64/libfletcher.so")
+            linkTask.get().lib("/usr/local/lib64/libfletcher_echo.so")
         }
     }
 }

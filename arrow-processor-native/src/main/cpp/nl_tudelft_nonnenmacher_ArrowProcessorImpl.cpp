@@ -6,6 +6,7 @@
 #include <arrow/ipc/api.h>
 #include <arrow/io/memory.h>
 #include <arrow/api.h>
+#include <fletcher/api.h>
 
 using namespace plasma;
 
@@ -16,7 +17,12 @@ Status ReadBatches(std::shared_ptr<Buffer> buffer_, std::shared_ptr<arrow::Recor
 
 ObjectID objectIdFromJavaArray(JNIEnv *env, _jbyteArray *object_id_java_array);
 
-void readFromPlasma(std::shared_ptr<ObjectID> object_id, ObjectBuffer* object_buffers);
+//void readFromPlasma(std::shared_ptr<ObjectID> object_id, ObjectBuffer* object_buffers);
+
+int createFletcherPlatformAndContext(std::shared_ptr<fletcher::Platform>* platform_out, std::shared_ptr<fletcher::Context>* context_out);
+
+int processRecordBatchOnFletcher(std::shared_ptr<fletcher::Platform> platform, std::shared_ptr<fletcher::Context> context,
+                                 const std::shared_ptr<arrow::RecordBatch> &record_batch, uint32_t *ret0, uint32_t *ret1);
 
 JNIEXPORT jlong JNICALL Java_nl_tudelft_ewi_abs_nonnenmacher_ArrowProcessorJni_sum
         (JNIEnv *env, jobject obj, jbyteArray object_id_java_array) {
@@ -32,18 +38,23 @@ JNIEXPORT jlong JNICALL Java_nl_tudelft_ewi_abs_nonnenmacher_ArrowProcessorJni_s
     arrow::Status r2 = client.Get(&object_id, 1, -1, &object_buffer);
     std::cout << "plasma client get: " << r2.ok() << std::endl;
 
-    // Retrieve object data.
+    // Retrieve RecordBuffer
     auto buffer = object_buffer.data;
-//    const uint8_t *data = buffer->data();
-//    int64_t data_size = buffer->size();
-//
-//    std::cout << "data_size: " << data_size << std::endl;
-//    std::cout << "object_buffer.metadata->size()" << object_buffer.metadata-> size() << std::endl;
-//    std::cout << "data[0]: " << (int) data[0] << std::endl;
-
     std::shared_ptr<arrow::RecordBatch> record_batch;
     ReadBatches(buffer, &record_batch);
 
+    //create Fletcher Platform and context
+    std::shared_ptr<fletcher::Platform> platform;
+    std::shared_ptr<fletcher::Context> context;
+    createFletcherPlatformAndContext(&platform, &context);
+
+    uint32_t return_value_0;
+    uint32_t return_value_1;
+
+    processRecordBatchOnFletcher(platform, context, record_batch, &return_value_0, &return_value_1);
+    std::cout << "Potential Fletcher Result: " << return_value_0 << std::endl;
+
+    // REPLACE this later when real fletcher platform in place
     auto values = std::static_pointer_cast<arrow::Int64Array>(record_batch->column(0));
 
     long sum = 0;
@@ -66,4 +77,82 @@ ObjectID objectIdFromJavaArray(JNIEnv *env, _jbyteArray *java_array) {
     char *object_id_bin = (char *) env->GetByteArrayElements(java_array, NULL);
     ObjectID object_id = ObjectID::from_binary(object_id_bin);
     return object_id;
+}
+
+int createFletcherPlatformAndContext(std::shared_ptr<fletcher::Platform>* platform_out, std::shared_ptr<fletcher::Context>* context_out){
+    fletcher::Status status;
+
+    // Create a Fletcher platform object, attempting to autodetect the platform.
+    status = fletcher::Platform::Make(platform_out, false);
+
+    if (!status.ok()) {
+        std::cerr << "Could not create Fletcher platform!" << std::endl;
+        return -1;
+    }
+
+    // Initialize the platform.
+    status = (*platform_out)->Init();
+
+    if (!status.ok()) {
+        std::cerr << "Could not create Fletcher platform." << std::endl;
+        return -1;
+    }
+
+    // Create a context for our application on the platform.
+    status = fletcher::Context::Make(context_out, (*platform_out));
+
+    if (!status.ok()) {
+        std::cerr << "Could not create Fletcher context." << std::endl;
+        return -1;
+    }
+
+    return 0;
+}
+
+int processRecordBatchOnFletcher(std::shared_ptr<fletcher::Platform> platform, std::shared_ptr<fletcher::Context> context,
+                                 const std::shared_ptr<arrow::RecordBatch> &record_batch, uint32_t *ret0, uint32_t *ret1){
+    fletcher::Status status;
+    // Queue the recordbatch to our context.
+    status = context->QueueRecordBatch(record_batch);
+
+    if (!status.ok()) {
+        std::cerr << "Could not queue the RecordBatch to the context." << std::endl;
+        return -1;
+    }
+
+    // "Enable" the context, potentially copying the recordbatch to the device. This depends on your platform.
+    // AWS EC2 F1 requires a copy, but OpenPOWER SNAP doesn't.
+    context->Enable();
+
+    if (!status.ok()) {
+        std::cerr << "Could not enable the context." << std::endl;
+        return -1;
+    }
+
+    // Create a kernel based on the context.
+    fletcher::Kernel kernel(context);
+
+    // Start the kernel.
+    status = kernel.Start();
+
+    if (!status.ok()) {
+        std::cerr << "Could not start the kernel." << std::endl;
+        return -1;
+    }
+
+    // Wait for the kernel to finish.
+    status = kernel.WaitForFinish();
+
+    if (!status.ok()) {
+        std::cerr << "Something went wrong waiting for the kernel to finish." << std::endl;
+        return -1;
+    }
+
+    // Obtain the return value.
+    status = kernel.GetReturn(ret0, ret1);
+
+    if (!status.ok()) {
+        std::cerr << "Could not obtain the return value." << std::endl;
+        return -1;
+    }
 }
