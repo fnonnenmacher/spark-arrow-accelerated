@@ -10,7 +10,7 @@ import org.apache.arrow.vector.ipc.ArrowStreamWriter
 import org.apache.arrow.vector.ipc.message.{ArrowFieldNode, ArrowRecordBatch}
 import org.apache.arrow.vector.types.pojo.Field.nullable
 import org.apache.arrow.vector.types.pojo.{ArrowType, Field, FieldType, Schema}
-import org.apache.arrow.vector.{BigIntVector, FieldVector, UInt1Vector, UInt8Vector, VectorLoader, VectorSchemaRoot, VectorUnloader}
+import org.apache.arrow.vector.{BigIntVector, FieldVector, IntVector, UInt1Vector, UInt8Vector, VectorLoader, VectorSchemaRoot, VectorUnloader}
 import org.junit.runner.RunWith
 import org.scalatest.FunSuite
 import org.scalatest.junit.JUnitRunner
@@ -20,29 +20,30 @@ import scala.collection.JavaConverters._
 @RunWith(classOf[JUnitRunner])
 class ArrowProcessorTest extends FunSuite {
 
-  test("that a correct Arrow Root is created ") {
 
-    val input = Seq(1L, 2L, 3L)
-    val root = LongVectorSchemaRootBuilder.from("field-name", input)
+  test("calculate the sum of an example vector") {
 
-    assert(root.getFieldVectors.size() === 1)
-    assert(root.getRowCount === 3)
-    assert(root.getVector(0).getField.getName == "field-name")
+    val root = ArrowVectorBuilder.toSchemaRoot(LongVector("some-values", Seq(1,2,3,4,5,6,7,8,9,10)))
 
-    assert(root.getVector(0).isInstanceOf[BigIntVector])
-    assert(root.getVector(0).asInstanceOf[BigIntVector].get(0) === 1L)
-    assert(root.getVector(0).asInstanceOf[BigIntVector].get(1) === 2L)
-    assert(root.getVector(0).asInstanceOf[BigIntVector].get(2) === 3L)
-  }
-
-  test("calculate the some of an example vector") {
-
-    val arrowProcessor = new ArrowProcessor()
-
-    val root = LongVectorSchemaRootBuilder.from("some-values", Seq(1,2,3,4,5,6,7,8,9,10))
-
-    val res = arrowProcessor.sum(root)
+    val res = ArrowProcessor.sum(root)
 
     assert(res === 55)
+  }
+
+  test("add up three vectors") {
+
+    val v1 = IntegerVector("in1", Seq(1, 2, 3))
+    val v2 = IntegerVector("in2", Seq(10, 20, 30))
+    val v3 = IntegerVector("in3", Seq(100, 200, 300))
+    val root = ArrowVectorBuilder.toSchemaRoot(v1, v2, v3)
+
+    val rootRes = ArrowProcessor.addThreeVectors(root)
+    assert(rootRes.getFieldVectors.size() == 1)
+
+    val resVec1 = rootRes.getVector(0).asInstanceOf[IntVector]
+    assert(resVec1.getName == "out")
+    assert(resVec1.get(0) == 111)
+    assert(resVec1.get(1) == 222)
+    assert(resVec1.get(2) == 333)
   }
 }

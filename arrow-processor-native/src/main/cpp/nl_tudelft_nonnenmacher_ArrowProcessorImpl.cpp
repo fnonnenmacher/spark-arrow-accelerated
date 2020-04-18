@@ -1,17 +1,19 @@
 #include "nl_tudelft_ewi_abs_nonnenmacher_ArrowProcessorJni.h"
 
 #include <iostream>
+#include <fstream>
 #include <string>
 #include <plasma/client.h>
 #include <arrow/ipc/api.h>
 #include <arrow/io/memory.h>
 #include <arrow/api.h>
 #include <fletcher/api.h>
+#include <arrow/io/api.h>
 
 using namespace plasma;
 
 using BatchVector = std::vector<std::shared_ptr<arrow::RecordBatch>>;
-using arrow::Int64Builder;
+using arrow::Int32Builder;
 
 Status ReadBatches(std::shared_ptr<Buffer> buffer_, std::shared_ptr<arrow::RecordBatch> *out_batch);
 
@@ -23,6 +25,105 @@ int createFletcherPlatformAndContext(std::shared_ptr<fletcher::Platform>* platfo
 
 int processRecordBatchOnFletcher(std::shared_ptr<fletcher::Platform> platform, std::shared_ptr<fletcher::Context> context,
                                  const std::shared_ptr<arrow::RecordBatch> &record_batch, uint32_t *ret0, uint32_t *ret1);
+
+JNIEXPORT jbyteArray JNICALL Java_nl_tudelft_ewi_abs_nonnenmacher_ArrowProcessorJni_addingThreeValues
+  (JNIEnv *env, jobject obj, jbyteArray object_id_java_array_in, jbyteArray object_id_java_array_out) {
+
+    // convert java array to object id
+    ObjectID object_id = objectIdFromJavaArray(env, object_id_java_array_in);
+    ObjectID object_id_out = objectIdFromJavaArray(env, object_id_java_array_out);
+
+    std::cout << "ObjectId (Input)  = " << object_id.hex() << std::endl;
+    std::cout << "ObjectId (Output) = " << object_id_out.hex() << std::endl;
+
+    // intitialize Plasma client
+    PlasmaClient client;
+    arrow::Status r1 = client.Connect("/tmp/plasma");
+    std::cout << "Plasma client connected: " << r1.ok() << std::endl;
+
+    // Read input arrow byte data from plase
+    ObjectBuffer object_buffer;
+    client.Get(&object_id, 1, -1, &object_buffer);
+    std::cout << "Plasma client read "<< object_buffer.data->size() <<" bytes." << std::endl;
+
+    // Intepret bytes as RecordBuffer
+    auto buffer = object_buffer.data;
+    std::shared_ptr<arrow::RecordBatch> record_batch;
+    ReadBatches(buffer, &record_batch);
+    std::cout << "Read bytes are a valid recordbuffer" << std::endl;
+
+    // get individual input field vectors
+    auto vector_in1 = std::static_pointer_cast<arrow::Int32Array>(record_batch->column(0));
+    auto vector_in2 = std::static_pointer_cast<arrow::Int32Array>(record_batch->column(1));
+    auto vector_in3 = std::static_pointer_cast<arrow::Int32Array>(record_batch->column(2));
+
+    // intitialize builder for integer field vector
+    arrow::MemoryPool* pool = arrow::default_memory_pool();
+    Int32Builder res_builder(pool);
+
+    //iterate over rows and bild sum for every row
+    for (int i=0; i < record_batch->num_rows(); i++){
+
+        int v1 = vector_in1->raw_values()[i];
+        int v2 = vector_in2->raw_values()[i];
+        int v3 = vector_in3->raw_values()[i];
+        int sum = v1+v2+v3;
+        std::cout << "Calculate row: " << v1 << " + "<< v2 << " + "<< v3 << " = " << sum << std::endl;
+        res_builder.Append(sum);
+    }
+
+    // get field vector from builder
+    std::shared_ptr<arrow::Array> res_array;
+    res_builder.Finish(&res_array);
+
+    // define output schema
+    std::vector<std::shared_ptr<arrow::Field>> schema_vector = {
+            arrow::field("out", arrow::int32())};
+    auto result_schema = std::make_shared<arrow::Schema>(schema_vector);
+
+    // create ecord batch containing the created int vector
+    std::vector<std::shared_ptr<arrow::Array>> vec;
+    vec.push_back(res_array);
+    std::shared_ptr<arrow::RecordBatch> res_record_batch = arrow::RecordBatch::Make(result_schema, record_batch->num_rows(), vec);
+
+    // DEBUG
+    // Print data written to record batch to make sure it's correct
+    // auto values = std::static_pointer_cast<arrow::Int32Array>(res_record_batch->column(0));
+    // for (int i=0; i<res_record_batch->num_rows(); i++){
+    //     std::cout << values->raw_values()[i] << std::endl;
+    // }
+
+
+    // DEBUG alternative:
+    // write to file instead of byte array to validate consistency
+    //    auto out_file = arrow::io::FileOutputStream::Open("res.rb", false).ValueOrDie();
+    //    auto writer = arrow::ipc::RecordBatchFileWriter::Open(out_file.get(), result_schema).ValueOrDie();
+
+
+    // Write record batch to byte array buffer
+    auto sink = arrow::io::BufferOutputStream::Create().ValueOrDie();
+    auto writer = arrow::ipc::RecordBatchStreamWriter::Open(sink.get(), res_record_batch->schema()).ValueOrDie();
+    writer->WriteRecordBatch(*res_record_batch);
+    writer->Close();
+    std::shared_ptr<Buffer> buffer1 =sink->Finish().ValueOrDie();
+
+    // TODO: nicer delete
+    // make sure no other result object exists in Plasma store
+    client.Delete(object_id_out);
+
+    // Write bytes of result record batch to plasma store
+    std::shared_ptr<Buffer> data_buffer;
+    arrow::Status s1 = client.Create(object_id_out, buffer1->size(), NULL, 0, &data_buffer);
+
+    // TODO: looks inefficent copying the previously generated byta array to the store
+    for (size_t i = 0; i < buffer1->size(); i++) {
+        data_buffer->mutable_data()[i] = buffer1->data()[i];
+    }
+
+    std::cout << "Plasma client created result object: " << s1.ok() << std::endl;
+    arrow::Status s3 = client.Seal(object_id_out);
+    std::cout << "Plasma client wrote result (" << buffer->size() << " bytes) to the plasma store" << std::endl;
+}
 
 JNIEXPORT jlong JNICALL Java_nl_tudelft_ewi_abs_nonnenmacher_ArrowProcessorJni_sum
         (JNIEnv *env, jobject obj, jbyteArray object_id_java_array) {
@@ -68,8 +169,8 @@ Status ReadBatches(std::shared_ptr<Buffer> buffer_, std::shared_ptr<arrow::Recor
     auto buf_reader = std::make_shared<arrow::io::BufferReader>(buffer_);
     std::shared_ptr<arrow::ipc::RecordBatchReader> reader;
     Status status = arrow::ipc::RecordBatchStreamReader::Open(buf_reader, &reader);
-    std::cout << "Status:" << (int) status.code() << std::endl;
-    std::cout << "Status:" << status.message() << std::endl;
+//  std::cout << "Status:" << (int) status.code() << std::endl;
+//  std::cout << "Status:" << status.message() << std::endl;
     return reader->ReadNext(out_batch);
 }
 

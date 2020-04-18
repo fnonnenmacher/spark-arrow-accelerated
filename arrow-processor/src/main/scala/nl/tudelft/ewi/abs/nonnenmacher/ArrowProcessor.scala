@@ -1,29 +1,44 @@
 package nl.tudelft.ewi.abs.nonnenmacher
 
+import nl.tudelft.ewi.abs.nonnenmacher.PlasmaFacade.randomObjectId
 import org.apache.arrow.vector.VectorSchemaRoot
 
-class ArrowProcessor {
+object ArrowProcessor {
 
   lazy val processorJni = {
     System.loadLibrary("fletcher_echo")
-    Thread.sleep(1000)
     System.loadLibrary("fletcher")
     System.loadLibrary("plasma")
     System.loadLibrary("arrow")
-    Thread.sleep(1000)
     System.loadLibrary("arrow-processor-native");
     new ArrowProcessorJni();
   }
 
+  /**
+   * first try to call c++ code, currently not called from Spark
+   *
+   * @param root
+   * @return
+   */
   def sum(root: VectorSchemaRoot): Long = {
 
-    val recordBuffer = VectorSchemaRootToRecordBuffer.convert(root)
+    val recordBuffer = ArrowRootByteConverter.convert(root)
     val objectId = PlasmaFacade.create(recordBuffer);
 
     val result = processorJni.sum(objectId);
-//    val result=3
     PlasmaFacade.delete(objectId);
     result
   }
 
+  def addThreeVectors(root: VectorSchemaRoot): VectorSchemaRoot = {
+
+    val recordBuffer = ArrowRootByteConverter.convert(root)
+    val objectId = PlasmaFacade.create(recordBuffer);
+    val objectIdOut = randomObjectId()
+
+    processorJni.addingThreeValues(objectId, objectIdOut);
+
+    val resData = PlasmaFacade.get(objectIdOut);
+    ArrowRootByteConverter.convert(resData)
+  }
 }

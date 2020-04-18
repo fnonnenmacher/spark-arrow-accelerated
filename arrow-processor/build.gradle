@@ -65,6 +65,8 @@ task generateNativeHeaders(type: Exec) {
     args(nativeClasses)
 }
 
+def classesTask = project.getTasksByName('classes', false).head()
+
 project(':arrow-processor-native').afterEvaluate {
-    test.dependsOn(project(':arrow-processor-native').assemble)
+    classesTask.dependsOn(project(':arrow-processor-native').assemble)
 }

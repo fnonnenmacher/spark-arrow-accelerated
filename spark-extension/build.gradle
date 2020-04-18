@@ -52,5 +52,5 @@ compileTestScala.dependsOn(project.compileScala)
 
 project(':arrow-processor-native').afterEvaluate {
     test.dependsOn(project(':arrow-processor-native').assemble)
-
+//    compileScala.finalizedBy(project(':arrow-processor-native').assemble)
 }
