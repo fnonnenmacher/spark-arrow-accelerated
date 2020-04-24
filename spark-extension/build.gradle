@@ -21,6 +21,7 @@ dependencies {
     compile "org.apache.spark:spark-sql_2.12:$sparkVersion"
     compile "org.apache.spark:spark-catalyst_2.12:$sparkVersion"
     compile "org.apache.spark:spark-core_2.12:$sparkVersion"
+    compile "org.apache.spark:spark-mllib_2.12:$sparkVersion"
 
     compile 'org.apache.arrow:arrow-vector:0.16.0'
     compile 'org.apache.arrow:arrow-plasma:0.16.0'
@@ -34,10 +35,10 @@ configurations.all {
     resolutionStrategy {
         // Jackson versions used by Spark
         // force them bc otherwise 'org.apache.arrow:arrow-vector:0.16.0' overwrites them to incompatible versions
-        force('com.fasterxml.jackson.core:jackson-core:2.7.9',
-                'com.fasterxml.jackson.core:jackson-annotations:2.6.7',
-                'com.fasterxml.jackson.core:jackson-databind:2.6.7.3',
-                'com.fasterxml.jackson.module:jackson-module-paranamer:2.7.9')
+//        force('com.fasterxml.jackson.core:jackson-core:2.7.9',
+//                'com.fasterxml.jackson.core:jackson-annotations:2.6.7',
+//                'com.fasterxml.jackson.core:jackson-databind:2.6.7.3',
+//                'com.fasterxml.jackson.module:jackson-module-paranamer:2.7.9')
     }
 }
 

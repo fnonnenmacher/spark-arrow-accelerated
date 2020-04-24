@@ -15,11 +15,11 @@ This repository contains my work/implementation which I do during my Masterthesi
 
 ## Archived Steps
 
-* Replace a pattern (Adding of three fields) in a projection with a projection which is then executed in native code (later Fletcher)
-* Convert Spark partition to Apache Arrow Vector
+* Replace a hardcoded pattern (Adding of three fields) in a projection with a projection which is then executed in native code (later Fletcher)
+* Convert Spark partition to Apache Arrow Vector (using columnar processing approach of Spark version 3)
 * Store Apache Arrow Vector in Plasma Store
 * Call native code from JNI
-* Call most improtant Fletcher interfaces (atm without real kernel)
+* Call most important Fletcher interfaces (only with echo kernel)
 * Sum up Arrow vectors in C++
 * Send result back to java (plasma-store) and convert to Spark Rows
 
