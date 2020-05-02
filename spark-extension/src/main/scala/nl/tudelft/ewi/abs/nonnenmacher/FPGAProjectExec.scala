@@ -3,14 +3,15 @@ package nl.tudelft.ewi.abs.nonnenmacher
 import org.apache.arrow.vector.{FieldVector, VectorSchemaRoot}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.InternalRow
-import org.apache.spark.sql.catalyst.expressions.Attribute
+import org.apache.spark.sql.catalyst.expressions.{Attribute, AttributeReference}
 import org.apache.spark.sql.execution.{SparkPlan, UnaryExecNode}
+import org.apache.spark.sql.types.{IntegerType, LongType}
 import org.apache.spark.sql.vectorized.{ColumnVector, ColumnarBatch}
 import org.apache.spark.sql.{ArrowColumnVectorWithAccessibleFieldVector, vectorized}
 
 import scala.collection.JavaConverters._
 
-case class FPGAProjectExec(child: SparkPlan, outputAttributes: Seq[Attribute])
+case class FPGAProjectExec(child: SparkPlan, name: String, outputs: Seq[Attribute])
   extends UnaryExecNode {
 
   override def supportsColumnar: Boolean = true
@@ -56,5 +57,13 @@ case class FPGAProjectExec(child: SparkPlan, outputAttributes: Seq[Attribute])
     batch
   }
 
-  override def output: Seq[Attribute] = outputAttributes
+  override def output: Seq[Attribute] = outputs
+}
+
+object FPGAProjectExec{
+  def apply(child: SparkPlan, fpgaModule: FPGAModule) : FPGAProjectExec = {
+    //TODO: Type!
+    val attrOut = AttributeReference(fpgaModule.output.getName, IntegerType)()
+    FPGAProjectExec(child, fpgaModule.name, Seq(attrOut))
+  }
 }

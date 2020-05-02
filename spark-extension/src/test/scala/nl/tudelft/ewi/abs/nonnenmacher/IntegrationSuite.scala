@@ -1,10 +1,7 @@
 package nl.tudelft.ewi.abs.nonnenmacher
 
-import breeze.linalg
-import org.apache.spark.ml
-import org.apache.spark.ml.classification.NaiveBayes
-import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
-import org.apache.spark.ml.linalg.Vectors
+import nl.tudelft.ewi.abs.nonnenmacher.ArrowFieldDefinitionHelper.nullableInt
+import org.apache.arrow.vector.types.pojo.Field
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.{ArrowColumnarConversionRule, DataFrame, SparkSession}
 import org.junit.runner.RunWith
@@ -19,7 +16,6 @@ class IntegrationSuite extends FunSuite {
 
     val spark = SparkSession
       .builder()
-      .withExtensions(_.injectPlannerStrategy(_ => PartlyProjectionOnFPGAStrategy))
       .appName("Spark SQL basic example")
       .config("spark.master", "local")
       .getOrCreate()
@@ -37,9 +33,19 @@ class IntegrationSuite extends FunSuite {
   }
 
   test("example addition of three values is executed on cpp code") {
+
+    //Define FPGAModules
+    val in1: In = In(nullableInt("in1"))
+    val in2: In = In(nullableInt("in2"))
+    val in3: In = In(nullableInt("in3"))
+
+
+    val sumOfThree = FPGAModule("sumOfThree", query = in1 + in2 + in3, output = nullableInt("out"))
+
+
     val spark = SparkSession
       .builder()
-      .withExtensions(_.injectPlannerStrategy(_ => PartlyProjectionOnFPGAStrategy))
+      .withExtensions(ProjectionOnFPGAExtension(sumOfThree))
       .withExtensions(_.injectColumnar(_ => ArrowColumnarConversionRule))
       .appName("Spark SQL basic example")
       .config("spark.master", "local")
@@ -57,12 +63,13 @@ class IntegrationSuite extends FunSuite {
 
     import spark.implicits._
 
+
     val df = spark.createDataset(tuples)
       .toDF("a", "b", "c", "d")
       .repartition(2) // Enforces a separate Projection step
     // otherwise Spark optimizes the projection and combines it with the data generation
 
-    val res = df.select(((col("a") + col("b") + col("c") * col("d")) * 4))
+    val res = df.select((col("a") + col("b") + col("c") * col("d")) * 4)
 
     println("Logical Plan:")
     println(res.queryExecution.optimizedPlan)
@@ -78,5 +85,7 @@ class IntegrationSuite extends FunSuite {
     val results: Array[Int] = res.collect().map(_.getInt(0));
     assert(results.length == 6)
     assert(Set(12, 32, 60, 96, 140, 192).subsetOf(results.toSet))
+
+    println("Result: " + results.toSet)
   }
 }
