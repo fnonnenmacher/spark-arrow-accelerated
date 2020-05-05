@@ -10,7 +10,6 @@ Task generateHeaders = project(':arrow-processor').generateNativeHeaders
 
 library {
     privateHeaders.from generateHeaders.outputs.files[0]
-    privateHeaders.from '/usr/local/include'
 
     binaries.configureEach {
         compileTask.get().dependsOn(generateHeaders)
@@ -18,6 +17,7 @@ library {
         compileTask.get().compilerArgs.add("-v")
         compileTask.get().compilerArgs.add("--std=c++11")
         compileTask.get().compilerArgs.add("-Wall")
+        compileTask.get().includes '/usr/local/include'
         compileTask.get().includes("${Jvm.current().javaHome}/include")
 
         if (isFamily(FAMILY_MAC)) {
@@ -30,6 +30,7 @@ library {
             linkTask.get().lib("/usr/local/lib/libarrow.dylib")
             linkTask.get().lib("/usr/local/lib/libfletcher.dylib")
             linkTask.get().lib("/usr/local/lib/libfletcher_echo.dylib")
+            linkTask.get().lib("/usr/local/lib/libparquet.dylib")
             linkTask.get().linkerArgs.add("--std=c++11")
             linkTask.get().toolChain.set(toolChains.withType(Clang)[0])
         } else if (isFamily(FAMILY_UNIX)) {
@@ -39,6 +40,7 @@ library {
             linkTask.get().lib("/usr/local/lib64/libarrow.so")
             linkTask.get().lib("/usr/local/lib64/libfletcher.so")
             linkTask.get().lib("/usr/local/lib64/libfletcher_echo.so")
+            linkTask.get().lib("/usr/local/lib64/libparquet.so")
         }
     }
 }

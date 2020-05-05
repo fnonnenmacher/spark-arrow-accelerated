@@ -10,7 +10,7 @@ import org.apache.arrow.vector.ipc.ArrowStreamWriter
 import org.apache.arrow.vector.ipc.message.{ArrowFieldNode, ArrowRecordBatch}
 import org.apache.arrow.vector.types.pojo.Field.nullable
 import org.apache.arrow.vector.types.pojo.{ArrowType, Field, FieldType, Schema}
-import org.apache.arrow.vector.{BigIntVector, FieldVector, IntVector, UInt1Vector, UInt8Vector, VectorLoader, VectorSchemaRoot, VectorUnloader}
+import org.apache.arrow.vector.{BigIntVector, FieldVector, IntVector, UInt1Vector, UInt8Vector, VarCharVector, VectorLoader, VectorSchemaRoot, VectorUnloader}
 import org.junit.runner.RunWith
 import org.scalatest.FunSuite
 import org.scalatest.junit.JUnitRunner
@@ -20,6 +20,23 @@ import scala.collection.JavaConverters._
 @RunWith(classOf[JUnitRunner])
 class ArrowProcessorTest extends FunSuite {
 
+  test("test parquete reading"){
+    val rootRes = ArrowProcessor.readParquete("data/example.parquet");
+
+    assert(rootRes.getFieldVectors.size() == 3)
+
+    val intVector = rootRes.getVector("int-field").asInstanceOf[IntVector]
+    val intData = Range(0, rootRes.getRowCount).map(intVector.get)
+    assert( intData == Seq(0, 1, 2, 3, 4))
+
+    val longVector = rootRes.getVector("long-field").asInstanceOf[BigIntVector]
+    val longData = Range(0, rootRes.getRowCount).map(longVector.get)
+    assert( longData == Seq(0, 1, 4, 9, 16))
+
+    val stringVector = rootRes.getVector("string-field").asInstanceOf[VarCharVector]
+    val stringData = Range(0, rootRes.getRowCount).map(stringVector.getObject(_).toString)
+    assert( stringData == Seq("number-0", "number-1", "number-2", "number-3", "number-4"))
+  }
 
   test("calculate the sum of an example vector") {
 

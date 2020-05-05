@@ -5,7 +5,7 @@ import org.apache.arrow.vector.VectorSchemaRoot
 
 object ArrowProcessor {
 
-  lazy val processorJni = {
+  private lazy val processorJni = {
     System.loadLibrary("fletcher_echo")
     System.loadLibrary("fletcher")
     System.loadLibrary("plasma")
@@ -14,12 +14,15 @@ object ArrowProcessor {
     new ArrowProcessorJni();
   }
 
-  /**
-   * first try to call c++ code, currently not called from Spark
-   *
-   * @param root
-   * @return
-   */
+  def readParquete(fileName: String): VectorSchemaRoot = {
+    val objectIdOut = randomObjectId()
+    processorJni.readParquete(fileName, objectIdOut)
+
+    val resData = PlasmaFacade.get(objectIdOut);
+    ArrowRootByteConverter.convert(resData)
+  }
+
+
   def sum(root: VectorSchemaRoot): Long = {
 
     val recordBuffer = ArrowRootByteConverter.convert(root)

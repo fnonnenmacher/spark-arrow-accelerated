@@ -12,6 +12,23 @@ import org.scalatest.junit.JUnitRunner
 @RunWith(classOf[JUnitRunner])
 class IntegrationSuite extends FunSuite {
 
+
+  ignore("creates example parquet file for tests"){
+    val spark = SparkSession
+      .builder()
+      .appName("Spark SQL basic example")
+      .config("spark.master", "local")
+      .getOrCreate()
+
+    import spark.implicits._
+
+    spark.conf.set("spark.sql.parquet.writeLegacyFormat",	value = true)
+    spark.conf.set("spark.sql.parquet.compression.codec",	value = "uncompressed")
+
+    spark.range(5).rdd.map( x => (x.toInt, x*x, s"number-$x")).toDF("int-field", "long-field", "string-field")
+      .write.parquet("test-example.parquet")
+  }
+
   ignore("read from parquet format") {
 
     val spark = SparkSession
@@ -20,8 +37,9 @@ class IntegrationSuite extends FunSuite {
       .config("spark.master", "local")
       .getOrCreate()
 
-    val sqlDF: DataFrame = spark.sql("SELECT substr(`name`, 0, 3) , `favorite_color` FROM parquet.`../../spark/examples/src/main/resources/users.parquet` WHERE `name`=='Alyssa' OR `name`=='Bob'")
+    val sqlDF: DataFrame = spark.sql("SELECT * FROM parquet.`range.parquet` WHERE `id` % 2 == 0")
 
+    sqlDF.printSchema()
     println("Direct Plan:")
     println(sqlDF.queryExecution)
     println("Logical Plan:")
@@ -29,6 +47,7 @@ class IntegrationSuite extends FunSuite {
     println("Spark Plan:")
     println(sqlDF.queryExecution.sparkPlan)
 
+    println(sqlDF.columns.mkString(", "))
     sqlDF.foreach(println(_))
   }
 
@@ -41,7 +60,6 @@ class IntegrationSuite extends FunSuite {
 
 
     val sumOfThree = FPGAModule("sumOfThree", query = in1 + in2 + in3, output = nullableInt("out"))
-
 
     val spark = SparkSession
       .builder()
