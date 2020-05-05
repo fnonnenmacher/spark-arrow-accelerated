@@ -15,15 +15,15 @@ RUN apk add --update-cache autoconf \
 ENV JAVA_HOME /usr/lib/jvm/java-1.8-openjdk
 
 # Download apache arrow
-RUN wget -q https://github.com/apache/arrow/archive/master.zip &&\
-        unzip -q master.zip  &&\
-        mv /arrow-master /arrow &&\
-        rm -f master.zip
+RUN wget -q http://apache.40b.nl/arrow/arrow-0.17.0/apache-arrow-0.17.0.tar.gz &&\
+        mkdir /arrow &&\
+        tar -xzf apache-arrow-0.17.0.tar.gz --strip-components 1 -C /arrow &&\
+        rm -f apache-arrow-0.17.0.tar.gz
 
 # Build and install apache arrow with plasma server & plasma jni lib
 RUN mkdir /arrow/cpp/release &&\
         cd /arrow/cpp/release &&\
-        cmake -DARROW_PLASMA=ON -DARROW_PLASMA_JAVA_CLIENT=ON .. &&\
+        cmake -DARROW_PLASMA=ON -DARROW_PLASMA_JAVA_CLIENT=ON -DARROW_PARQUET=ON .. &&\
         make &&\
         make install &&\
         cp /arrow/cpp/release/release/libplasma_java.so /usr/local/lib64/ &&\

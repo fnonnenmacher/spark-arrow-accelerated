@@ -6,8 +6,9 @@
 * published on Dockerhub as [fnonnenmacher/arrow-plasma-java](https://hub.docker.com/r/fnonnenmacher/arrow-plasma-java)
 
 ## Version
-* `0.1`: Contains jdk-8, apache arrow
+* `0.1`: Contains jdk-8, apache arrow (including plasma)
 * `0.2`: Adds fletcher runtime and echo platform 
+* `0.3`: Adds arrow parquete library
 
 ## Commands:
 * Build: `docker build -t fnonnenmacher/arrow-plasma-java:<VERSION> .`
