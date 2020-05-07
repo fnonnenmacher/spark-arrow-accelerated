@@ -18,6 +18,12 @@ jbyteArray to_java(JNIEnv *env, const ObjectID &object_id_out) {
 
 JNIEXPORT jbyteArray JNICALL Java_nl_tudelft_ewi_abs_nonnenmacher_NativeRecordBatchIterator_next
         (JNIEnv *env, jobject obj, jlong p_native_ptr) {
-    ObjectID object_id = ((ParqueteToPlasmaReader *) p_native_ptr)->next();
-    return to_java(env, object_id);
+    std::shared_ptr<ObjectID> object_id = ((ParqueteToPlasmaReader *) p_native_ptr)->next();
+    return to_java(env, *object_id);
+}
+
+JNIEXPORT void JNICALL Java_nl_tudelft_ewi_abs_nonnenmacher_NativeRecordBatchIterator_close
+        (JNIEnv *env, jobject obj, jlong p_native_ptr){
+    delete ((ParqueteToPlasmaReader *) p_native_ptr);
+    std::cout <<"CLOSE CALLED";
 }

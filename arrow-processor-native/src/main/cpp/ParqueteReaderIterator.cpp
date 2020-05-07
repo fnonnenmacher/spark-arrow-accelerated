@@ -30,8 +30,11 @@ bool ParqueteReaderIterator::hasNext() {
 }
 
 std::shared_ptr<arrow::RecordBatch> ParqueteReaderIterator::next() {
+    std::shared_ptr<arrow::RecordBatch> current_batch;
+
     if (next_batch != nullptr) {
         current_batch = next_batch;
+        next_batch.reset();
         next_batch = nullptr;
     } else {
         ASSERT_OK(rb_reader->ReadNext(&current_batch));

@@ -18,7 +18,6 @@ private :
     std::unique_ptr<parquet::arrow::FileReader> reader;
     std::shared_ptr<arrow::RecordBatchReader> rb_reader;
     std::shared_ptr<arrow::RecordBatch> next_batch = nullptr;
-    std::shared_ptr<arrow::RecordBatch> current_batch = nullptr;
 public:
     explicit ParqueteReaderIterator(const char * file_name);
     bool hasNext() override;

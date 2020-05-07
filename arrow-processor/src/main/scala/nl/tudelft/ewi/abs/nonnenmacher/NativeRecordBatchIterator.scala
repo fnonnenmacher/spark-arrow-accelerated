@@ -1,27 +1,31 @@
 package nl.tudelft.ewi.abs.nonnenmacher
 
 /**
- * Hint: Use Java iterator instead of scala iterator, that it is known by jni
+ * Hint: Use Java iterator instead of scala iterator, so that JNI understands it
  */
 class NativeRecordBatchIterator(val ptr:Long) extends java.util.Iterator[Array[Byte]] {
 
-//  val ptr: Long = initiate();
+  private var isClosed = false;
 
-  override def hasNext: Boolean = hasNext(ptr);
+  override def hasNext: Boolean = {
+    if (isClosed){
+      return false;
+    }
+    val _hasNext : Boolean = hasNext(ptr)
 
-  override def next(): Array[Byte] = {
-
-    val objectId = next(ptr);
-
-    return objectId;
+    if(!_hasNext){ //All elements processed -> close/release now all C++ objects
+      close(ptr)
+      isClosed = true;
+    }
+    _hasNext
   }
 
-//  @native private def initiate(): Long;
+  override def next(): Array[Byte] = next(ptr);
 
   @native private def hasNext(ptr_native: Long): Boolean
 
   @native private def next(ptr_native: Long): Array[Byte];
 
-  @native private def destroy(): Unit;
+  @native private def close(ptr_native: Long): Unit;
 }
 

@@ -18,7 +18,7 @@ bool ParqueteToPlasmaReader::hasNext() {
     return record_batch_iterator->hasNext();
 }
 
-plasma::ObjectID ParqueteToPlasmaReader::next() {
+std::shared_ptr<ObjectID> ParqueteToPlasmaReader::next() {
     auto record_batch = record_batch_iterator->next();
     auto buffer = batch_to_buffer_processor->process(record_batch);
     return buffer_to_plasma_processor->process(buffer);

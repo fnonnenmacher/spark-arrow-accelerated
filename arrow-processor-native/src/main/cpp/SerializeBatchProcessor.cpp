@@ -11,16 +11,16 @@
 
 
 SerializeBatchProcessor::SerializeBatchProcessor() {
-    //TODO: Init writers etc
+    buffer_output_stream = arrow::io::BufferOutputStream::Create().ValueOrDie();
 }
 
 std::shared_ptr<arrow::Buffer> SerializeBatchProcessor::process(std::shared_ptr<arrow::RecordBatch> batch) {
-    //TODO include schema only in first batch
-    auto buffer_output_stream = arrow::io::BufferOutputStream::Create().ValueOrDie();
-    auto rb_writer = arrow::ipc::NewStreamWriter(buffer_output_stream.get(), batch->schema()).ValueOrDie();
+    if (rb_writer == nullptr){//lazy initialization to have schema availabe
+        rb_writer = arrow::ipc::NewStreamWriter(buffer_output_stream.get(),batch->schema()).ValueOrDie();
+    }
     ASSERT_OK(buffer_output_stream->Reset());
 
     ASSERT_OK(rb_writer->WriteRecordBatch(*batch));
-    ASSERT_OK(rb_writer->Close());
+//    ASSERT_OK(rb_writer->Close());
     return buffer_output_stream->Finish().ValueOrDie();
 }

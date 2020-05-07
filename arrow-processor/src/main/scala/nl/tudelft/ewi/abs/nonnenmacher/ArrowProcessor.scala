@@ -16,12 +16,10 @@ object ArrowProcessor {
     new ArrowProcessorJni();
   }
 
-  def readParquete(fileName: String): Iterator[VectorSchemaRoot] = {
+  def readParquet(fileName: String): Iterator[VectorSchemaRoot] = {
     val pointer = processorJni.readParquete(fileName)
-    new NativeRecordBatchIterator(pointer).asScala.map { objectid =>
-      val resData = PlasmaFacade.get(objectid);
-      ArrowRootByteConverter.convert(resData)
-    }
+    val nativeIter = new NativeRecordBatchIterator(pointer).asScala
+    new ArrowDeserializer(nativeIter)
   }
 
 

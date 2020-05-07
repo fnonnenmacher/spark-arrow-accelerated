@@ -25,7 +25,7 @@ class IntegrationSuite extends FunSuite {
     spark.conf.set("spark.sql.parquet.writeLegacyFormat",	value = true)
     spark.conf.set("spark.sql.parquet.compression.codec",	value = "uncompressed")
 
-    spark.range(5).rdd.map( x => (x.toInt, x*x, s"number-$x")).toDF("int-field", "long-field", "string-field")
+    spark.range(1e6.toLong).rdd.map( x => (x.toInt, x*x, s"number-$x")).toDF("int-field", "long-field", "string-field")
       .write.parquet("test-example.parquet")
   }
 
@@ -51,7 +51,7 @@ class IntegrationSuite extends FunSuite {
     sqlDF.foreach(println(_))
   }
 
-  test("example addition of three values is executed on cpp code") {
+  ignore("example addition of three values is executed on cpp code") {
 
     //Define FPGAModules
     val in1: In = In(nullableInt("in1"))
@@ -80,7 +80,6 @@ class IntegrationSuite extends FunSuite {
       (6, 6, 6, 6))
 
     import spark.implicits._
-
 
     val df = spark.createDataset(tuples)
       .toDF("a", "b", "c", "d")
