@@ -43,7 +43,8 @@ test {
     systemProperty "java.library.path", libraryPaths.join(':')
 }
 
-def nativeClasses = ['nl.tudelft.ewi.abs.nonnenmacher.ArrowProcessorJni']
+def nativeClasses = ['nl.tudelft.ewi.abs.nonnenmacher.ArrowProcessorJni',
+                     'nl.tudelft.ewi.abs.nonnenmacher.NativeRecordBatchIterator']
 
 task generateNativeHeaders(type: Exec) {
 
@@ -51,7 +52,7 @@ task generateNativeHeaders(type: Exec) {
 
     def compileOutput = compileScala.outputs.files[0].getAbsolutePath()
 
-    inputs.files( nativeClasses.collect{ "$compileOutput/${it.replace('.', '/')}.class" } )
+    inputs.files(nativeClasses.collect { "$compileOutput/${it.replace('.', '/')}.class" })
     outputs.dir("$project.buildDir/headers")
 
     commandLine "$System.env.JAVA_HOME/bin/javah"

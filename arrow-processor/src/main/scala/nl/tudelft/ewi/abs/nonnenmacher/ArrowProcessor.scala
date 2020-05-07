@@ -3,6 +3,8 @@ package nl.tudelft.ewi.abs.nonnenmacher
 import nl.tudelft.ewi.abs.nonnenmacher.PlasmaFacade.randomObjectId
 import org.apache.arrow.vector.VectorSchemaRoot
 
+import scala.collection.JavaConverters._
+
 object ArrowProcessor {
 
   private lazy val processorJni = {
@@ -14,12 +16,12 @@ object ArrowProcessor {
     new ArrowProcessorJni();
   }
 
-  def readParquete(fileName: String): VectorSchemaRoot = {
-    val objectIdOut = randomObjectId()
-    processorJni.readParquete(fileName, objectIdOut)
-
-    val resData = PlasmaFacade.get(objectIdOut);
-    ArrowRootByteConverter.convert(resData)
+  def readParquete(fileName: String): Iterator[VectorSchemaRoot] = {
+    val pointer = processorJni.readParquete(fileName)
+    new NativeRecordBatchIterator(pointer).asScala.map { objectid =>
+      val resData = PlasmaFacade.get(objectid);
+      ArrowRootByteConverter.convert(resData)
+    }
   }
 
 

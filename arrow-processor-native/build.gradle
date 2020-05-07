@@ -15,7 +15,7 @@ library {
         compileTask.get().dependsOn(generateHeaders)
 
         compileTask.get().compilerArgs.add("-v")
-        compileTask.get().compilerArgs.add("--std=c++11")
+        compileTask.get().compilerArgs.add("--std=c++14")
         compileTask.get().compilerArgs.add("-Wall")
         compileTask.get().includes '/usr/local/include'
         compileTask.get().includes("${Jvm.current().javaHome}/include")
