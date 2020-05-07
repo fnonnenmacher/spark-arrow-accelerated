@@ -12,7 +12,6 @@ import org.scalatest.junit.JUnitRunner
 @RunWith(classOf[JUnitRunner])
 class IntegrationSuite extends FunSuite {
 
-
   ignore("creates example parquet file for tests"){
     val spark = SparkSession
       .builder()

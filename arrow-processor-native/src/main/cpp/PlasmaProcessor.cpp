@@ -56,7 +56,7 @@ WriteToPlasmaProcessor::~WriteToPlasmaProcessor() {
     std::cout << "Plasma client disconnected:" << s.ok() << std::endl;
 };
 
-// TODO
+// TODO Seed?!
 // Copied from plasma/test_util.h
 std::shared_ptr<ObjectID> random_object_id() {
     static uint32_t random_seed = 0;
