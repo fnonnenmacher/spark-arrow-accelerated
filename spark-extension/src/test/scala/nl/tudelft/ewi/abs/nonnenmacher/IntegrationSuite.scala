@@ -2,6 +2,7 @@ package nl.tudelft.ewi.abs.nonnenmacher
 
 import nl.tudelft.ewi.abs.nonnenmacher.ArrowFieldDefinitionHelper.nullableInt
 import org.apache.arrow.vector.types.pojo.Field
+import org.apache.spark.sql.execution.datasources.MyFileSourceStrategy
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.{ArrowColumnarConversionRule, DataFrame, SparkSession}
 import org.junit.runner.RunWith
@@ -28,15 +29,18 @@ class IntegrationSuite extends FunSuite {
       .write.parquet("test-example.parquet")
   }
 
-  ignore("read from parquet format") {
+  test("read from parquet format") {
 
     val spark = SparkSession
       .builder()
+      .withExtensions(_.injectPlannerStrategy( x => MyFileSourceStrategy))
       .appName("Spark SQL basic example")
       .config("spark.master", "local")
       .getOrCreate()
 
-    val sqlDF: DataFrame = spark.sql("SELECT * FROM parquet.`range.parquet` WHERE `id` % 2 == 0")
+    spark.conf.set("spark.sql.codegen.wholeStage", false)
+
+    val sqlDF: DataFrame = spark.sql("SELECT `string-field` FROM parquet.`example.parquet` WHERE `long-field`>2 OR `long-field` < 0")
 
     sqlDF.printSchema()
     println("Direct Plan:")
@@ -45,6 +49,8 @@ class IntegrationSuite extends FunSuite {
     println(sqlDF.queryExecution.optimizedPlan)
     println("Spark Plan:")
     println(sqlDF.queryExecution.sparkPlan)
+    println("Executed Plan:")
+    println(sqlDF.queryExecution.executedPlan)
 
     println(sqlDF.columns.mkString(", "))
     sqlDF.foreach(println(_))
