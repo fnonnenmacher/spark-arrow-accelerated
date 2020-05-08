@@ -34,7 +34,7 @@ shared_ptr<arrow::RecordBatch> ThreeIntAdderProcessor::process(const shared_ptr<
     auto vector_in2 = std::static_pointer_cast<arrow::Int32Array>(record_batch->column(1));
     auto vector_in3 = std::static_pointer_cast<arrow::Int32Array>(record_batch->column(2));
 
-    // intitialize builder for integer field vector
+    // initialize builder for integer field vector
     arrow::MemoryPool *pool = arrow::default_memory_pool();
     Int32Builder res_builder(pool);
 

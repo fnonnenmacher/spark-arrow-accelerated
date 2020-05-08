@@ -10,12 +10,17 @@
 #include <arrow/io/memory.h>
 #include <parquet/arrow/reader.h>
 
-ParqueteReaderIterator::ParqueteReaderIterator(const char *file_path) {
+#include <utility>
+
+ParqueteReaderIterator::ParqueteReaderIterator(const std::string& file_path, const std::vector<int>& fields) {
+
     ASSERT_OK(parquet::arrow::FileReader::Make(arrow::default_memory_pool(),
                                                parquet::ParquetFileReader::OpenFile(file_path),
                                                &reader));
+    std::shared_ptr<arrow::Schema> schema;
+    ASSERT_OK(reader->GetSchema(&schema));
 
-    ASSERT_OK(reader->GetRecordBatchReader({0}, &rb_reader));
+    ASSERT_OK(reader->GetRecordBatchReader({0}, fields, &rb_reader));
 }
 
 bool ParqueteReaderIterator::hasNext() {

@@ -5,14 +5,17 @@ import org.junit.runner.RunWith
 import org.scalatest.FunSuite
 import org.scalatest.junit.JUnitRunner
 
+import scala.collection.JavaConverters._
+
 @RunWith(classOf[JUnitRunner])
 class ArrowProcessorTest extends FunSuite {
 
   test("test reading of big parquet file to verify sending of multiple batches works correctly") {
-    val iter = ArrowProcessor.readParquet("data/big-example.parquet");
+    val iter = ArrowProcessor.readParquet("data/big-example.parquet", Array(0));
 
     val allInts = iter.flatMap { root =>
       val intVector = root.getVector("int-field").asInstanceOf[IntVector]
+      assert(root.getFieldVectors.size() ==1 )//only 1 vector, because of passed field indices
       Range(0, root.getRowCount).map(intVector.get)
     }.toSeq
 
@@ -24,11 +27,13 @@ class ArrowProcessorTest extends FunSuite {
 
   test("test reading of parquet file") {
 
-    val iter = ArrowProcessor.readParquet("data/example.parquet");
+    val iter = ArrowProcessor.readParquet("data/example.parquet", Array(1,2, 0));
 
     val rootRes = iter.next()
 
     assert(rootRes.getFieldVectors.size() == 3)
+    //order of fields should be as requested in paramterA rray(1,2, 0)
+    assert(rootRes.getFieldVectors.asScala.map(_.getField.getName) == List("long-field", "string-field", "int-field"))
 
     val intVector = rootRes.getVector("int-field").asInstanceOf[IntVector]
     val intData = Range(0, rootRes.getRowCount).map(intVector.get)
@@ -43,7 +48,7 @@ class ArrowProcessorTest extends FunSuite {
     assert(stringData == Seq("number-0", "number-1", "number-2", "number-3", "number-4"))
   }
 
-  ignore("calculate the sum of an example vector") {
+  test("calculate the sum of an example vector") {
 
     val root = ArrowVectorBuilder.toSchemaRoot(LongVector("some-values", Seq(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)))
 

@@ -45,12 +45,11 @@ std::shared_ptr<ObjectID> WriteToPlasmaProcessor::process(std::shared_ptr<arrow:
 }
 
 WriteToPlasmaProcessor::~WriteToPlasmaProcessor() {
-    std::cout <<"PLASMA DESTRUCTOR CALLED";
     //delete the previously stored object
     if (last_plasma_object != nullptr) {
         client->Release(*last_plasma_object);
         Status s = client->Delete(*last_plasma_object);
-        std::cout << "DESTRUCTOR: Object "<< last_plasma_object->hex() <<"deleted:" << s.ok() << std::endl;
+//        std::cout << "DESTRUCTOR: Object "<< last_plasma_object->hex() <<"deleted:" << s.ok() << std::endl;
     }
     arrow::Status s = client->Disconnect();
     std::cout << "Plasma client disconnected:" << s.ok() << std::endl;

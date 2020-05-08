@@ -21,7 +21,7 @@ private:
     unique_ptr<BatchProcessor<std::shared_ptr<arrow::Buffer>, std::shared_ptr<ObjectID>>> buffer_to_plasma_processor;
 
 public:
-    explicit ParqueteToPlasmaReader(const char* file_name);
+    explicit ParqueteToPlasmaReader(const std::string& file_name, const std::vector<int>& fields);
     bool hasNext() override;
     std::shared_ptr<ObjectID> next() override;
     ~ParqueteToPlasmaReader() override = default;

@@ -15,8 +15,8 @@ object ArrowProcessor {
     new ArrowProcessorJni();
   }
 
-  def readParquet(fileName: String): Iterator[VectorSchemaRoot] = {
-    NativeRecordBatchIterator(fileName)
+  def readParquet(fileName: String, fieldNames: Array[Int]): Iterator[VectorSchemaRoot] = {
+    NativeRecordBatchIterator(fileName, fieldNames)
       .map {PlasmaFacade.get}
       .wrap( x =>  new ArrowDeserializer(x))
   }

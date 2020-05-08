@@ -8,8 +8,8 @@
 #include "SerializeBatchProcessor.h"
 #include "PlasmaProcessor.h"
 
-ParqueteToPlasmaReader::ParqueteToPlasmaReader(const char *file_name) {
-    record_batch_iterator = std::make_unique<ParqueteReaderIterator>(file_name);
+ParqueteToPlasmaReader::ParqueteToPlasmaReader(const std::string& file_name, const std::vector<int>& fields) {
+    record_batch_iterator = std::make_unique<ParqueteReaderIterator>(file_name, fields);
     batch_to_buffer_processor = std::make_unique<SerializeBatchProcessor>();
     buffer_to_plasma_processor = std::make_unique<WriteToPlasmaProcessor>();
 }
