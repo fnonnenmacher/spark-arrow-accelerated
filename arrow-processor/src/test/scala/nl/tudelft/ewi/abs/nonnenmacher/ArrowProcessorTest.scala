@@ -8,7 +8,7 @@ import org.scalatest.junit.JUnitRunner
 @RunWith(classOf[JUnitRunner])
 class ArrowProcessorTest extends FunSuite {
 
-  test("test reading of big parquet file to verify sending of multiple batches works correcly") {
+  test("test reading of big parquet file to verify sending of multiple batches works correctly") {
     val iter = ArrowProcessor.readParquet("data/big-example.parquet");
 
     val allInts = iter.flatMap { root =>
@@ -22,7 +22,7 @@ class ArrowProcessorTest extends FunSuite {
     assert(allInts.last == 999999)
   }
 
-  test("test reading of parquetfile") {
+  test("test reading of parquet file") {
 
     val iter = ArrowProcessor.readParquet("data/example.parquet");
 

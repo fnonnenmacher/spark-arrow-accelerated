@@ -41,7 +41,9 @@ trait AutoCloseableIterator[T] extends Iterator[T] with AutoCloseable {
   }
 }
 
-trait ClosableFunction[A, B] extends Function[A, B] with AutoCloseable {
-
+/**
+ * use java function instead of scala alternative, that it get's understood by jni
+ */
+trait ClosableFunction[A, B] extends java.util.function.Function[A, B] with AutoCloseable {
 
 }
