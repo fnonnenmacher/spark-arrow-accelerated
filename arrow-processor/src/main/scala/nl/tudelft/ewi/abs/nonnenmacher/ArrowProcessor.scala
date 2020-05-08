@@ -1,9 +1,10 @@
 package nl.tudelft.ewi.abs.nonnenmacher
 
-import nl.tudelft.ewi.abs.nonnenmacher.PlasmaFacade.randomObjectId
 import org.apache.arrow.vector.VectorSchemaRoot
 
 import scala.collection.JavaConverters._
+
+import nl.tudelft.ewi.abs.nonnenmacher.AutoCloseProcessingHelper._
 
 object ArrowProcessor {
 
@@ -19,9 +20,8 @@ object ArrowProcessor {
   def readParquet(fileName: String): Iterator[VectorSchemaRoot] = {
     val pointer = processorJni.readParquete(fileName)
     val nativeIter = new NativeRecordBatchIterator(pointer).asScala
-    new ArrowDeserializer(nativeIter)
+    new ArrowDeserializer(nativeIter.map(PlasmaFacade.get))
   }
-
 
   def sum(root: VectorSchemaRoot): Long = {
 
@@ -35,13 +35,22 @@ object ArrowProcessor {
 
   def addThreeVectors(root: VectorSchemaRoot): VectorSchemaRoot = {
 
+
     val recordBuffer = ArrowRootByteConverter.convert(root)
     val objectId = PlasmaFacade.create(recordBuffer);
-    val objectIdOut = randomObjectId()
 
-    processorJni.addingThreeValues(objectId, objectIdOut);
+    val objectIdOut = processorJni.addingThreeValues(objectId);
 
     val resData = PlasmaFacade.get(objectIdOut);
     ArrowRootByteConverter.convert(resData)
   }
+
+  def addThreeVectors(iter: Iterator[VectorSchemaRoot]): Iterator[VectorSchemaRoot] = {
+    iter
+      .map {ArrowRootByteConverter.convert}
+      .map {PlasmaFacade.create}
+      .mapAndAutoClose(ThreeIntAdderProcessor())
+      .map {PlasmaFacade.get}
+      .wrap( new ArrowDeserializer(_))
+    }
 }

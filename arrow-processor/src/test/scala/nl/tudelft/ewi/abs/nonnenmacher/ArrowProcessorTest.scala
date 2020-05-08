@@ -8,7 +8,7 @@ import org.scalatest.junit.JUnitRunner
 @RunWith(classOf[JUnitRunner])
 class ArrowProcessorTest extends FunSuite {
 
-  test("test reading of big parquete to verify sending of multiple batches") {
+  test("test reading of big parquet file to verify sending of multiple batches works correcly") {
     val iter = ArrowProcessor.readParquet("data/big-example.parquet");
 
     val allInts = iter.flatMap { root =>
@@ -22,7 +22,8 @@ class ArrowProcessorTest extends FunSuite {
     assert(allInts.last == 999999)
   }
 
-  ignore("test reading of parquetfile") {
+  test("test reading of parquetfile") {
+
     val iter = ArrowProcessor.readParquet("data/example.parquet");
 
     val rootRes = iter.next()
@@ -52,14 +53,16 @@ class ArrowProcessorTest extends FunSuite {
     assert(res === 55)
   }
 
-  ignore("add up three vectors") {
+  test("add up three vectors") {
 
     val v1 = IntegerVector("in1", Seq(1, 2, 3))
     val v2 = IntegerVector("in2", Seq(10, 20, 30))
     val v3 = IntegerVector("in3", Seq(100, 200, 300))
     val root = ArrowVectorBuilder.toSchemaRoot(v1, v2, v3)
 
-    val rootRes = ArrowProcessor.addThreeVectors(root)
+    val itRes = ArrowProcessor.addThreeVectors(Iterator(root))
+
+    val rootRes = itRes.next()
     assert(rootRes.getFieldVectors.size() == 1)
 
     val resVec1 = rootRes.getVector(0).asInstanceOf[IntVector]

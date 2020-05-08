@@ -22,4 +22,11 @@ public:
     ~SerializeBatchProcessor() override = default;
 };
 
+class DeserializeBatchProcessor : public BatchProcessor<std::shared_ptr<arrow::Buffer>, std::shared_ptr<arrow::RecordBatch>> {
+public:
+    std::shared_ptr<arrow::RecordBatch> process(std::shared_ptr<arrow::Buffer>) override;
+    explicit DeserializeBatchProcessor();
+    ~DeserializeBatchProcessor() override = default;
+};
+
 #endif //SPARK_EXAMPLE_SERIALIZEBATCHPROCESSOR_H

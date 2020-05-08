@@ -14,7 +14,6 @@ using namespace plasma;
 
 class WriteToPlasmaProcessor : public BatchProcessor<std::shared_ptr<arrow::Buffer>, std::shared_ptr<ObjectID>> {
 private:
-//    std::unique_ptr<PlasmaFacade> plasma_facade;
     std::unique_ptr<PlasmaClient> client;
     std::shared_ptr<ObjectID> last_plasma_object = nullptr;
 public:
@@ -23,13 +22,12 @@ public:
     ~WriteToPlasmaProcessor() override;
 };
 
-class ReadFromPlasmaProcessor : public BatchProcessor<ObjectID, std::unique_ptr<ObjectBuffer>> {
+class ReadFromPlasmaProcessor : public BatchProcessor<std::shared_ptr<ObjectID>, std::shared_ptr<arrow::Buffer>> {
 private:
-//    std::unique_ptr<PlasmaFacade> plasma_facade;
     std::unique_ptr<PlasmaClient> client;
 public:
     ReadFromPlasmaProcessor();
-    std::unique_ptr<ObjectBuffer> process(ObjectID objectId) override;
+    std::shared_ptr<arrow::Buffer> process(std::shared_ptr<ObjectID> objectId) override;
     ~ReadFromPlasmaProcessor() override;
 };
 

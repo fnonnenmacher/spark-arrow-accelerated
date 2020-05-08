@@ -44,7 +44,9 @@ test {
 }
 
 def nativeClasses = ['nl.tudelft.ewi.abs.nonnenmacher.ArrowProcessorJni',
-                     'nl.tudelft.ewi.abs.nonnenmacher.NativeRecordBatchIterator']
+                     'nl.tudelft.ewi.abs.nonnenmacher.NativeRecordBatchIterator',
+                     'nl.tudelft.ewi.abs.nonnenmacher.ThreeIntAdderProcessor',
+                     'nl.tudelft.ewi.abs.nonnenmacher.ThreeIntAdderProcessor$Initializer']
 
 task generateNativeHeaders(type: Exec) {
 

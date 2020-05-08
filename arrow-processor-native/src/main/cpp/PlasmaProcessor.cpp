@@ -29,7 +29,7 @@ std::shared_ptr<ObjectID> WriteToPlasmaProcessor::process(std::shared_ptr<arrow:
 
     // ATTENTION: If program crashes object ID might not be deleted as it should be!
     // Then new object cannot be stored. Therfor sometimes t is helpful to uncomment the followign line
-    // client->Delete(*last_plasma_object);
+    client->Delete(*last_plasma_object);
 
     // Write bytes of result record batch to plasma store
     std::shared_ptr<Buffer> plasma_buffer;
@@ -80,9 +80,9 @@ ReadFromPlasmaProcessor::~ReadFromPlasmaProcessor() {
     std::cout << "Plasma client disconnected:" << s.ok() << std::endl;
 }
 
-std::unique_ptr<ObjectBuffer> ReadFromPlasmaProcessor::process(ObjectID object_id) {
-    std::unique_ptr<ObjectBuffer> object_buffer(new ObjectBuffer);
-    ASSERT_OK(client->Get(&object_id, 1, -1, object_buffer.get()));
-    std::cout << "Plasma client read " << object_buffer->data->size() << " bytes." << std::endl;
-    return object_buffer;
+std::shared_ptr<arrow::Buffer> ReadFromPlasmaProcessor::process(std::shared_ptr<ObjectID> object_id) {
+    ObjectBuffer object_buffer;
+    ASSERT_OK(client->Get(object_id.get(), 1, -1, &object_buffer));
+    std::cout << "Plasma client read " << object_buffer.data->size() << " bytes." << std::endl;
+    return object_buffer.data;
 };

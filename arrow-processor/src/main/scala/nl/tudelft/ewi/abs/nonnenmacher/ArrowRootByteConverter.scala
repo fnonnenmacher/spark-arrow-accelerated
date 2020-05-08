@@ -72,8 +72,7 @@ class ArrowDeserializer(val iterator: Iterator[ObjectId]) extends Iterator[Vecto
   private val allocator = newChildAllocator(ArrowRootByteConverter.getClass)
 
   private lazy val arrayIteratorChannel = {
-    val dataIter = iterator.map(PlasmaFacade.get)
-    new ArrayIteratorChannel(dataIter)
+    new ArrayIteratorChannel(iterator)
   }
   private lazy val streamReader = {
     new ArrowStreamReader(arrayIteratorChannel, allocator)
