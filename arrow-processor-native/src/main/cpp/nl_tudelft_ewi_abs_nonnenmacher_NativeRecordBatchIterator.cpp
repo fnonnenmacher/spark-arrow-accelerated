@@ -1,10 +1,19 @@
 #include "nl_tudelft_ewi_abs_nonnenmacher_NativeRecordBatchIterator.h"
+#include "nl_tudelft_ewi_abs_nonnenmacher_NativeRecordBatchIterator_Initializer.h"
 
 #include "ParqueteToPlasmaReader.h"
 #include "JavaConverter.h"
 
 using namespace plasma;
 using namespace std;
+
+JNIEXPORT jlong JNICALL Java_nl_tudelft_ewi_abs_nonnenmacher_NativeRecordBatchIterator_00024Initializer_init
+        (JNIEnv *env, jobject obj, jstring java_file_name) {
+
+    // convert java array to object id
+    const char *file_path = env->GetStringUTFChars(java_file_name, 0);
+    return (jlong) new ParqueteToPlasmaReader(file_path);
+}
 
 JNIEXPORT jboolean JNICALL Java_nl_tudelft_ewi_abs_nonnenmacher_NativeRecordBatchIterator_hasNext
         (JNIEnv *env, jobject obj, jlong p_native_ptr){

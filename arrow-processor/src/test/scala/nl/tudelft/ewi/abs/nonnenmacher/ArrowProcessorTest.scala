@@ -28,7 +28,6 @@ class ArrowProcessorTest extends FunSuite {
 
     val rootRes = iter.next()
 
-
     assert(rootRes.getFieldVectors.size() == 3)
 
     val intVector = rootRes.getVector("int-field").asInstanceOf[IntVector]

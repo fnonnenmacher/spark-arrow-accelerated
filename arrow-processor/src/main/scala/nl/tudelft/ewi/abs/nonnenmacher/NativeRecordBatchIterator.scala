@@ -1,5 +1,6 @@
 package nl.tudelft.ewi.abs.nonnenmacher
 
+import scala.collection.JavaConverters._
 /**
  * Hint: Use Java iterator instead of scala iterator, so that JNI understands it
  */
@@ -29,3 +30,23 @@ class NativeRecordBatchIterator(val ptr:Long) extends java.util.Iterator[Array[B
   @native private def close(ptr_native: Long): Unit;
 }
 
+object NativeRecordBatchIterator {
+
+  private lazy val initializer: Initializer = {
+    System.loadLibrary("fletcher_echo")
+    System.loadLibrary("fletcher")
+    System.loadLibrary("plasma")
+    System.loadLibrary("arrow")
+    System.loadLibrary("arrow-processor-native");
+    new Initializer();
+  }
+
+  def apply(fileName: String): Iterator[Array[Byte]] = {
+    new NativeRecordBatchIterator(initializer.init(fileName)).asScala
+  };
+
+  private class Initializer {
+
+    @native def init(fileName: String): Long;
+  }
+}

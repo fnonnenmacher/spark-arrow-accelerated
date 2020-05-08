@@ -1,11 +1,11 @@
 package nl.tudelft.ewi.abs.nonnenmacher
 
-import org.apache.arrow.vector.{FieldVector, VectorSchemaRoot}
+import org.apache.arrow.vector.VectorSchemaRoot
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.{Attribute, AttributeReference}
 import org.apache.spark.sql.execution.{SparkPlan, UnaryExecNode}
-import org.apache.spark.sql.types.{IntegerType, LongType}
+import org.apache.spark.sql.types.IntegerType
 import org.apache.spark.sql.vectorized.{ColumnVector, ColumnarBatch}
 import org.apache.spark.sql.{ArrowColumnVectorWithAccessibleFieldVector, vectorized}
 
@@ -24,27 +24,20 @@ case class FPGAProjectExec(child: SparkPlan, name: String, outputs: Seq[Attribut
 
   override protected def doExecuteColumnar(): RDD[ColumnarBatch] = {
 
-    child.executeColumnar().mapPartitionsWithIndex((index, batchIter) =>
-
-      batchIter.map { batch =>
-
-        val inputVectors: Seq[FieldVector] = extractFieldVectors(batch)
-
-        val inputRoot = new VectorSchemaRoot(inputVectors.asJava)
-
-        // execute calculation on Fletcher/Cpp
-        val outputRoot = ArrowProcessor.addThreeVectors(inputRoot)
-
-        toResultBatch(outputRoot);
-      }
-    )
+    child.executeColumnar().mapPartitions( batchIter => {
+      val rootIter = batchIter
+        .map { toVectorSchemaRoot}
+      ArrowProcessor.addThreeVectors(rootIter)
+        .map(toResultBatch)
+    })
   }
 
-  private def extractFieldVectors(batch: ColumnarBatch): Seq[FieldVector] = {
-    (0 until batch.numCols).map(batch.column).map {
+  private def toVectorSchemaRoot(batch: ColumnarBatch): VectorSchemaRoot = {
+    val fieldVectors = (0 until batch.numCols).map(batch.column).map {
       case ArrowColumnVectorWithAccessibleFieldVector(fieldVector) => fieldVector
       case _ => throw new IllegalStateException(s"${getClass.getSimpleName} does only support columnar data in arrow format.")
     }
+    new VectorSchemaRoot(fieldVectors.asJava)
   }
 
   private def toResultBatch(root: VectorSchemaRoot): ColumnarBatch = {
@@ -60,8 +53,8 @@ case class FPGAProjectExec(child: SparkPlan, name: String, outputs: Seq[Attribut
   override def output: Seq[Attribute] = outputs
 }
 
-object FPGAProjectExec{
-  def apply(child: SparkPlan, fpgaModule: FPGAModule) : FPGAProjectExec = {
+object FPGAProjectExec {
+  def apply(child: SparkPlan, fpgaModule: FPGAModule): FPGAProjectExec = {
     //TODO: Type!
     val attrOut = AttributeReference(fpgaModule.output.getName, IntegerType)()
     FPGAProjectExec(child, fpgaModule.name, Seq(attrOut))

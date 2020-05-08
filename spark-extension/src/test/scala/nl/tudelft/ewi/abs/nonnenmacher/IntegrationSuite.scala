@@ -50,7 +50,7 @@ class IntegrationSuite extends FunSuite {
     sqlDF.foreach(println(_))
   }
 
-  ignore("example addition of three values is executed on cpp code") {
+  test("example addition of three values is executed on cpp code") {
 
     //Define FPGAModules
     val in1: In = In(nullableInt("in1"))

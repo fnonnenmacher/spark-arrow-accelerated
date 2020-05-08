@@ -11,9 +11,7 @@ object PlasmaFacade {
   val PLASMA_SOCKET_NAME = "/tmp/plasma"
 
   private lazy val random: Random = {
-    val r = new Random()
-    r.setSeed(12345)
-    r
+    new Random(12345)
   }
 
   lazy val client: PlasmaClient = {
@@ -24,17 +22,15 @@ object PlasmaFacade {
   def randomObjectId(): ObjectId = {
     //Attention: ObjectId must not contain bytes with value 0 - > therefore `random.nextBytes()` not possible.
     def randomByte(): Byte = {
-      (random.nextInt(255) + 1).toByte;
+      (random.nextInt(255) + 1).toByte
     }
 
     new ObjectId(20).map(_ => randomByte())
   }
 
   def create(data: Array[Byte]): ObjectId = {
-
-    val objectId = randomObjectId();
-    PlasmaFacade.delete(objectId); //TODO remove this later, just because random with seed always generates same id
-    client.put(objectId, data, null);
+    val objectId = randomObjectId()
+    client.put(objectId, data, null)
     objectId
   }
 
@@ -42,9 +38,26 @@ object PlasmaFacade {
     client.delete(objectId)
   }
 
-  def get(objectId: ObjectId) : Array[Byte] = {
-    val res = client.get(objectId, 0, false)
-    client.delete(objectId)
-    res
+  def get(objectId: ObjectId): Array[Byte] = {
+    client.get(objectId, 0, false)
+  }
+
+  def writeToPlasma(): ClosableFunction[Array[Byte], Array[Byte]] = new ClosableFunction[Array[Byte], Array[Byte]] {
+
+    var objectId: ObjectId = _;
+
+    override def apply(data: Array[Byte]): Array[Byte] = {
+      deletePreviousObjectId()
+      objectId = PlasmaFacade.create(data)
+      objectId
+    }
+
+    private def deletePreviousObjectId(): Unit = {
+      if (objectId != null) {
+        PlasmaFacade.delete(objectId);
+      }
+    }
+
+    override def close(): Unit = deletePreviousObjectId();
   }
 }

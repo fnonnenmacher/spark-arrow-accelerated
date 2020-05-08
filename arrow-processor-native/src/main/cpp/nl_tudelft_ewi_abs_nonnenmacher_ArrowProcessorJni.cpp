@@ -1,14 +1,9 @@
 #include "nl_tudelft_ewi_abs_nonnenmacher_ArrowProcessorJni.h"
 
-#include "ParqueteReaderIterator.h"
-#include "SerializeBatchProcessor.h"
-#include "PlasmaProcessor.h"
-#include "ParqueteToPlasmaReader.h"
-#include "ThreeIntAdderProcessor.h"
 #include "JavaConverter.h"
 
 #include <iostream>
-#include <fstream>
+
 #include <string>
 #include <plasma/client.h>
 #include <arrow/ipc/api.h>
@@ -32,21 +27,6 @@ int
 processRecordBatchOnFletcher(std::shared_ptr<fletcher::Platform> platform, std::shared_ptr<fletcher::Context> context,
                              const std::shared_ptr<arrow::RecordBatch> &record_batch, uint32_t *ret0, uint32_t *ret1);
 
-
-JNIEXPORT jbyteArray JNICALL Java_nl_tudelft_ewi_abs_nonnenmacher_ArrowProcessorJni_addingThreeValues
-        (JNIEnv *env, jobject obj, jbyteArray object_id_java_array_in) {
-
-    // convert java array to object id
-    shared_ptr<ObjectID> object_id = std::make_shared<ObjectID>(object_id_from_java(env, object_id_java_array_in));
-//    ObjectID object_id_out = object_id_from_java(env, object_id_java_array_out);
-
-//    std::make_unique<ThreeIntAdderProcessor>();
-    auto proc = new ThreeIntAdderProcessor();
-
-    shared_ptr<ObjectID> object_id_out = proc->process(object_id);
-
-    return object_id_to_java_(env, *object_id_out);
-}
 
 JNIEXPORT jlong JNICALL Java_nl_tudelft_ewi_abs_nonnenmacher_ArrowProcessorJni_sum
         (JNIEnv *env, jobject obj, jbyteArray object_id_java_array) {
@@ -176,12 +156,4 @@ processRecordBatchOnFletcher(std::shared_ptr<fletcher::Platform> platform, std::
         std::cerr << "Could not obtain the return value." << std::endl;
         return -1;
     }
-}
-
-
-JNIEXPORT jlong JNICALL Java_nl_tudelft_ewi_abs_nonnenmacher_ArrowProcessorJni_readParquete(JNIEnv *env,
-                                                                                            jobject,
-                                                                                            jstring java_file_name) {
-    const char *file_path = env->GetStringUTFChars(java_file_name, 0);
-    return (jlong) new ParqueteToPlasmaReader(file_path);
 }
