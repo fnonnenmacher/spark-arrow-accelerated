@@ -1,6 +1,10 @@
-FROM alpine:3.11
+FROM ubuntu:20.04
 
-RUN apk add --update-cache autoconf \
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y llvm-8 \
+        clang-8 \
+        autoconf \
         bash \
         cmake \
         g++ \
@@ -9,10 +13,11 @@ RUN apk add --update-cache autoconf \
         curl \
         zip \
         git \
-        openjdk8 \
-        && rm -rf /var/cache/apk/*
-
-ENV JAVA_HOME /usr/lib/jvm/java-1.8-openjdk
+        openjdk-8-jdk \
+        wget \
+        libz-dev \
+        maven \
+        && rm -rf /var/lib/apt/lists/*
 
 # Download apache arrow
 RUN wget -q http://apache.40b.nl/arrow/arrow-0.17.0/apache-arrow-0.17.0.tar.gz &&\
@@ -23,11 +28,15 @@ RUN wget -q http://apache.40b.nl/arrow/arrow-0.17.0/apache-arrow-0.17.0.tar.gz &
 # Build and install apache arrow with plasma server & plasma jni lib
 RUN mkdir /arrow/cpp/release &&\
         cd /arrow/cpp/release &&\
-        cmake -DARROW_PLASMA=ON -DARROW_PLASMA_JAVA_CLIENT=ON -DARROW_PARQUET=ON .. &&\
+        cmake -DARROW_PLASMA=ON -DARROW_PLASMA_JAVA_CLIENT=ON -DARROW_PARQUET=ON -DARROW_GANDIVA=ON -DARROW_GANDIVA_JAVA=ON .. &&\
         make &&\
         make install &&\
-        cp /arrow/cpp/release/release/libplasma_java.so /usr/local/lib64/ &&\
-        cp /arrow/cpp/release/release/plasma-store-server /usr/local/lib64/
+        cp /arrow/cpp/release/release/libplasma_java.so /usr/local/lib/
+
+ENV JAVA_HOME /usr/lib/jvm/java-8-openjdk-amd64/
+
+RUN     cd /arrow/java &&\
+        mvn clean install -P arrow-jni -am -DskipTests -Darrow.cpp.build.dir=../../cpp/release/release
 
 # Download Fletcher
 RUN wget -q https://github.com/abs-tudelft/fletcher/archive/develop.zip &&\
@@ -49,7 +58,9 @@ RUN mkdir /fletcher/platforms/echo/runtime/build &&\
         make &&\
         make install
 
-ENV LD_LIBRARY_PATH /usr/local/lib64:/usr/local/lib
+ENV ARROW_ROOT /arrow
+
+ENV LOCAL_LIBRARY_PATH /usr/local/lib
 
 VOLUME /app
 WORKDIR /app
