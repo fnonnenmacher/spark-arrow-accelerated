@@ -7,10 +7,11 @@ import nl.tudelft.ewi.abs.nonnenmacher.PlasmaFacade.writeToPlasma
 object ArrowProcessor {
 
   private lazy val processorJni = {
+    System.loadLibrary("arrow")
+    System.loadLibrary("parquet")
+    System.loadLibrary("plasma")
     System.loadLibrary("fletcher_echo")
     System.loadLibrary("fletcher")
-    System.loadLibrary("plasma")
-    System.loadLibrary("arrow")
     System.loadLibrary("arrow-processor-native");
     new ArrowProcessorJni();
   }

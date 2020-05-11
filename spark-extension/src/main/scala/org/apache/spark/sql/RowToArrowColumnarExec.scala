@@ -66,7 +66,7 @@ class RowToArrowColumnarExec(override val child: SparkPlan) extends RowToColumna
           arrowWriter.finish()
 
           val arrowVectors = root.getFieldVectors.asScala
-            .map(x => new ArrowColumnVectorWithAccessibleFieldVector(x))
+            .map(x => ArrowColumnVectorWithAccessibleFieldVector(x))
             .toArray[ColumnVector]
 
           //combine all column vectors in ColumnarBatch

@@ -1,7 +1,6 @@
-package nl.tudelft.ewi.abs.nonnenmacher
+package nl.tudelft.ewi.abs.nonnenmacher.gandiva
 
 import nl.tudelft.ewi.abs.nonnenmacher.ArrowFieldDefinitionHelper.nullableInt
-import org.apache.arrow.vector.types.pojo.Field
 import org.apache.spark.sql.execution.datasources.MyFileSourceStrategy
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.{ArrowColumnarConversionRule, DataFrame, SparkSession}
@@ -11,64 +10,13 @@ import org.scalatest.junit.JUnitRunner
 
 
 @RunWith(classOf[JUnitRunner])
-class IntegrationSuite extends FunSuite {
-
-  ignore("creates example parquet file for tests"){
-    val spark = SparkSession
-      .builder()
-      .appName("Spark SQL basic example")
-      .config("spark.master", "local")
-      .getOrCreate()
-
-    import spark.implicits._
-
-    spark.conf.set("spark.sql.parquet.writeLegacyFormat",	value = true)
-    spark.conf.set("spark.sql.parquet.compression.codec",	value = "uncompressed")
-
-    spark.range(1e6.toLong).rdd.map( x => (x.toInt, x*x, s"number-$x")).toDF("int-field", "long-field", "string-field")
-      .write.parquet("test-example.parquet")
-  }
-
-  ignore("read from parquet format") {
-
-    val spark = SparkSession
-      .builder()
-      .withExtensions(_.injectPlannerStrategy( x => MyFileSourceStrategy))
-      .appName("Spark SQL basic example")
-      .config("spark.master", "local")
-      .getOrCreate()
-
-    spark.conf.set("spark.sql.codegen.wholeStage", false)
-
-    val sqlDF: DataFrame = spark.sql("SELECT `string-field` FROM parquet.`example.parquet` WHERE `long-field`>2 OR `long-field` < 0")
-
-    sqlDF.printSchema()
-    println("Direct Plan:")
-    println(sqlDF.queryExecution)
-    println("Logical Plan:")
-    println(sqlDF.queryExecution.optimizedPlan)
-    println("Spark Plan:")
-    println(sqlDF.queryExecution.sparkPlan)
-    println("Executed Plan:")
-    println(sqlDF.queryExecution.executedPlan)
-
-    println(sqlDF.columns.mkString(", "))
-    sqlDF.foreach(println(_))
-  }
+class GandivaProjectionSuite extends FunSuite {
 
   test("example addition of three values is executed on cpp code") {
 
-    //Define FPGAModules
-    val in1: In = In(nullableInt("in1"))
-    val in2: In = In(nullableInt("in2"))
-    val in3: In = In(nullableInt("in3"))
-
-
-    val sumOfThree = FPGAModule("sumOfThree", query = in1 + in2 + in3, output = nullableInt("out"))
-
     val spark = SparkSession
       .builder()
-      .withExtensions(ProjectionOnFPGAExtension(sumOfThree))
+      .withExtensions(ProjectionOnGandivaExtension())
       .withExtensions(_.injectColumnar(_ => ArrowColumnarConversionRule))
       .appName("Spark SQL basic example")
       .config("spark.master", "local")
@@ -108,5 +56,25 @@ class IntegrationSuite extends FunSuite {
     assert(results.length == 6)
     println("Result: " + results.toSet)
     assert(Set(12, 32, 60, 96, 140, 192).subsetOf(results.toSet))
+  }
+
+  test("biggernumbers"){
+
+    val spark = SparkSession
+      .builder()
+      .withExtensions(ProjectionOnGandivaExtension())
+      .withExtensions(_.injectColumnar(_ => ArrowColumnarConversionRule))
+      .appName("Spark SQL basic example")
+      .config("spark.master", "local")
+      .getOrCreate()
+
+    import spark.implicits._
+
+    val df = spark.range(1e6.toLong).rdd.map( x => (x, (1e6-x).toLong, x*2))
+      .toDF("a", "b", "c")
+      .select(col("a")*col("b"), col("b")+col("c"), col("c")*2)
+
+    df.take(10).foreach(println(_))
+    println(df.count())
   }
 }

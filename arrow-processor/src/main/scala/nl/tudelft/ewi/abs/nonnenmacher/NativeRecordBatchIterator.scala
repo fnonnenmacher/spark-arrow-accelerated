@@ -34,10 +34,11 @@ class NativeRecordBatchIterator(val ptr: Long) extends java.util.Iterator[Array[
 object NativeRecordBatchIterator {
 
   private lazy val initializer: Initializer = {
+    System.loadLibrary("arrow")
+    System.loadLibrary("parquet")
+    System.loadLibrary("plasma")
     System.loadLibrary("fletcher_echo")
     System.loadLibrary("fletcher")
-    System.loadLibrary("plasma")
-    System.loadLibrary("arrow")
     System.loadLibrary("arrow-processor-native");
     new Initializer();
   }

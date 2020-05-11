@@ -8,6 +8,8 @@ plugins {
 
 Task generateHeaders = project(':arrow-processor').generateNativeHeaders
 
+def localLibPath = System.getenv("LOCAL_LIBRARY_PATH") ?:"/usr/local/lib"
+
 library {
     privateHeaders.from generateHeaders.outputs.files[0]
 
@@ -21,26 +23,23 @@ library {
         compileTask.get().includes("${Jvm.current().javaHome}/include")
 
         if (isFamily(FAMILY_MAC)) {
-            compileTask.get().toolChain.set(toolChains.withType(Clang)[0])
             compileTask.get().includes("${Jvm.current().javaHome}/include/darwin")
+
+            compileTask.get().toolChain.set(toolChains.withType(Clang)[0])
             compileTask.get().compilerArgs.add('-mmacosx-version-min=10.9')
 
             linkTask.get().linkerArgs.add('-mmacosx-version-min=10.9')
-            linkTask.get().lib("/usr/local/lib/libplasma.dylib")
-            linkTask.get().lib("/usr/local/lib/libarrow.dylib")
-            linkTask.get().lib("/usr/local/lib/libfletcher.dylib")
-            linkTask.get().lib("/usr/local/lib/libfletcher_echo.dylib")
-            linkTask.get().lib("/usr/local/lib/libparquet.dylib")
-            linkTask.get().linkerArgs.add("--std=c++11")
+            linkTask.get().linkerArgs.add("--std=c++14")
             linkTask.get().toolChain.set(toolChains.withType(Clang)[0])
         } else if (isFamily(FAMILY_UNIX)) {
             compileTask.get().includes("${Jvm.current().javaHome}/include/linux")
-
-            linkTask.get().lib("/usr/local/lib64/libplasma.so")
-            linkTask.get().lib("/usr/local/lib64/libarrow.so")
-            linkTask.get().lib("/usr/local/lib64/libfletcher.so")
-            linkTask.get().lib("/usr/local/lib64/libfletcher_echo.so")
-            linkTask.get().lib("/usr/local/lib64/libparquet.so")
         }
+
+        linkTask.get().lib("$localLibPath/libarrow.so")
+        linkTask.get().lib("$localLibPath/libplasma.so")
+        linkTask.get().lib("$localLibPath/libfletcher.so")
+        linkTask.get().lib("$localLibPath/libfletcher_echo.so")
+        linkTask.get().lib("$localLibPath/libparquet.so")
+
     }
 }

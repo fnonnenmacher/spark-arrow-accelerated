@@ -12,27 +12,33 @@ repositories {
 }
 
 dependencies {
-    compile "org.scala-lang:scala-library:" + scalaVersion
-    compile "org.scala-lang:scala-reflect:" + scalaVersion
-    compile "org.scala-lang:scala-compiler:" + scalaVersion
+    compile "org.scala-lang:scala-library:$scalaVersion"
+    compile "org.scala-lang:scala-reflect:$scalaVersion"
+    compile "org.scala-lang:scala-compiler:$scalaVersion"
 
-    compile 'org.apache.arrow:arrow-vector:0.16.0'
-    compile 'org.apache.arrow:arrow-plasma:0.16.0'
+    compile "org.apache.arrow:arrow-vector:$arrowVersion"
+    compile "org.apache.arrow:arrow-plasma:$arrowVersion"
 
-    //USE JUnit 4 instead because scalatest is not compatible with jUni5
+    // The arrow gandiva library includes only the native libraries for MacOs
+    // therefore on Linux the self-build version has to be used
+    if (System.getenv("ARROW_ROOT")){
+        compile files(System.getenv("ARROW_ROOT")+"/java/gandiva/target/arrow-gandiva-0.17.0.jar")
+
+        // transitive dependencies of arrow-gandiva https://mvnrepository.com/artifact/org.apache.arrow.gandiva/arrow-gandiva/0.17.0
+        compile "com.google.guava:guava:23.0"
+        compile "com.google.protobuf:protobuf-java:2.5.0"
+        compile "org.apache.arrow:arrow-memory:0.17.0"
+        compile "org.apache.arrow:arrow-vector:0.17.0"
+        compile "org.slf4j:slf4j-api:1.7.25"
+
+    }else {
+        compile "org.apache.arrow.gandiva:arrow-gandiva:$arrowVersion"
+    }
+
+
+    //USE JUnit 4 instead of 5 because scalatest is not compatible with jUni5
     testCompile 'org.scalatest:scalatest_2.12:3.0.1'
     testImplementation('junit:junit:4.13')
-}
-
-configurations.all {
-    resolutionStrategy {
-        // Jackson versions used by Spark
-        // force them bc otherwise 'org.apache.arrow:arrow-vector:0.16.0' overwrites them to incompatible versions
-        force('com.fasterxml.jackson.core:jackson-core:2.7.9',
-                'com.fasterxml.jackson.core:jackson-annotations:2.6.7',
-                'com.fasterxml.jackson.core:jackson-databind:2.6.7.3',
-                'com.fasterxml.jackson.module:jackson-module-paranamer:2.7.9')
-    }
 }
 
 def libraryPaths = [file("${project(':arrow-processor-native').buildDir}/lib/main/debug").absolutePath,
