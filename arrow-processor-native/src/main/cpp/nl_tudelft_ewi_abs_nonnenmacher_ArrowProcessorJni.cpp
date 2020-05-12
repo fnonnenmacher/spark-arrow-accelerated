@@ -1,6 +1,6 @@
 #include "nl_tudelft_ewi_abs_nonnenmacher_ArrowProcessorJni.h"
 
-#include "JavaConverter.h"
+#include "jni/Converters.h"
 
 #include <iostream>
 

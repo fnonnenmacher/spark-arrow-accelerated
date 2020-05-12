@@ -91,5 +91,8 @@ case class GandivaProjectExec(child: SparkPlan, projectionList: Seq[NamedExpress
   }
 
   override def output: Seq[Attribute] = outputs
+
+
+
 }
 

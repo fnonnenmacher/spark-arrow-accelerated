@@ -5,7 +5,7 @@
 #include "ThreeIntAdderProcessor.h"
 #include "SerializeBatchProcessor.h"
 #include "PlasmaProcessor.h"
-#include "my_assert.h"
+#include "jni/Assertions.h"
 
 using arrow::Int32Builder;
 
@@ -63,3 +63,4 @@ shared_ptr<arrow::RecordBatch> ThreeIntAdderProcessor::process(const shared_ptr<
     vec.push_back(res_array);
     return arrow::RecordBatch::Make(result_schema, record_batch->num_rows(), vec);
 }
+

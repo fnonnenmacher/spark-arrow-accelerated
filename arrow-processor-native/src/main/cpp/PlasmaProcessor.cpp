@@ -3,7 +3,7 @@
 //
 
 #include "PlasmaProcessor.h"
-#include "my_assert.h"
+#include "jni/Assertions.h"
 
 #include <utility>
 
@@ -28,8 +28,8 @@ std::shared_ptr<ObjectID> WriteToPlasmaProcessor::process(std::shared_ptr<arrow:
     last_plasma_object = random_object_id();
 
     // ATTENTION: If program crashes object ID might not be deleted as it should be!
-    // Then new object cannot be stored. Therfor sometimes t is helpful to uncomment the followign line
-    // client->Delete(*last_plasma_object);
+    // Then new object cannot be stored. Therefor sometimes t is helpful to uncomment the following line
+    ASSERT_OK(client->Delete(*last_plasma_object));
 
     // Write bytes of result record batch to plasma store
     std::shared_ptr<Buffer> plasma_buffer;

@@ -3,7 +3,7 @@
 //
 
 #include "SerializeBatchProcessor.h"
-#include "my_assert.h"
+#include "jni/Assertions.h"
 
 #include <utility>
 #include <arrow/ipc/api.h>
@@ -15,7 +15,7 @@ SerializeBatchProcessor::SerializeBatchProcessor() {
 }
 
 std::shared_ptr<arrow::Buffer> SerializeBatchProcessor::process(std::shared_ptr<arrow::RecordBatch> batch) {
-    if (rb_writer == nullptr){//lazy initialization to have schema availabe
+    if (rb_writer == nullptr){//late initialization to have schema availabe
         rb_writer = arrow::ipc::NewStreamWriter(buffer_output_stream.get(),batch->schema()).ValueOrDie();
     }
 

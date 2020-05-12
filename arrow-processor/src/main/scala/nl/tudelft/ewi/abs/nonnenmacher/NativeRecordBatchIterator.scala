@@ -1,5 +1,7 @@
 package nl.tudelft.ewi.abs.nonnenmacher
 
+import org.apache.arrow.vector.ipc.message.ArrowRecordBatch
+
 import scala.collection.JavaConverters._
 
 /**

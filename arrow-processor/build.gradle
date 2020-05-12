@@ -53,7 +53,9 @@ def nativeClasses = ['nl.tudelft.ewi.abs.nonnenmacher.ArrowProcessorJni',
                      'nl.tudelft.ewi.abs.nonnenmacher.NativeRecordBatchIterator',
                      'nl.tudelft.ewi.abs.nonnenmacher.NativeRecordBatchIterator$Initializer',
                      'nl.tudelft.ewi.abs.nonnenmacher.ThreeIntAdderProcessor',
-                     'nl.tudelft.ewi.abs.nonnenmacher.ThreeIntAdderProcessor$Initializer']
+                     'nl.tudelft.ewi.abs.nonnenmacher.ThreeIntAdderProcessor$Initializer',
+                     'nl.tudelft.ewi.abs.nonnenmacher.NativeParquetReader',
+                     'nl.tudelft.ewi.abs.nonnenmacher.NativeParquetReader$Initializer']
 
 task generateNativeHeaders(type: Exec) {
 
@@ -68,7 +70,9 @@ task generateNativeHeaders(type: Exec) {
 
     def scalaLibs = "$System.env.SCALA_HOME/lib"
 
-    args('-cp', "$scalaLibs/scala-library.jar:$scalaLibs/scala-reflect.jar:$compileOutput")
+    def dependencies = configurations.runtime.files.collect {it.toPath()}.join(":")
+
+    args('-cp', "$scalaLibs/scala-library.jar:$scalaLibs/scala-reflect.jar:$compileOutput:$dependencies")
 
     args('-d', outputs.files[0].absolutePath)
 

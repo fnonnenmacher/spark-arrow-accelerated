@@ -4,7 +4,7 @@
 
 #include "ParqueteReaderIterator.h"
 
-#include "my_assert.h"
+#include "jni/Assertions.h"
 
 #include <arrow/ipc/api.h>
 #include <arrow/io/memory.h>

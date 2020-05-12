@@ -21,8 +21,6 @@ class CheckGandivaWorksSuite extends FunSuite {
   test("that all Gandiva dependencies are set-up correctly and it can execute a projection") {
     // In this test basically no code from me is executed and it just checks Gandiva
 
-
-
     // arrow field definition of input
     val in1: Field = Field.nullable("in1", MinorType.INT.getType)
     val in2: Field = Field.nullable("in2", MinorType.INT.getType)

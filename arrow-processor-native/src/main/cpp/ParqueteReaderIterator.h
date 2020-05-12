@@ -8,7 +8,7 @@
 
 #include <memory>
 #include <arrow/api.h>
-#include "my_assert.h"
+#include "jni/Assertions.h"
 #include <jni.h>
 #include <parquet/arrow/reader.h>
 #include "Iterator.h"

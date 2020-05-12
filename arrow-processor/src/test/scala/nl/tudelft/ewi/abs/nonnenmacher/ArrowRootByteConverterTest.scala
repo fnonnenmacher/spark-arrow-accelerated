@@ -30,5 +30,4 @@ class ArrowRootByteConverterTest extends FunSuite {
     assert(resVec2.get(1) == 8)
     assert(resVec2.get(2) == 9)
   }
-
 }

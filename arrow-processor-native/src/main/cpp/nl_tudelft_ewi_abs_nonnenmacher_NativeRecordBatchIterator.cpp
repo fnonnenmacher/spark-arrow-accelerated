@@ -2,7 +2,7 @@
 #include "nl_tudelft_ewi_abs_nonnenmacher_NativeRecordBatchIterator_Initializer.h"
 
 #include "ParqueteToPlasmaReader.h"
-#include "JavaConverter.h"
+#include "jni/Converters.h"
 
 
 using namespace plasma;
