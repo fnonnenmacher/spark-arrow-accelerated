@@ -33,12 +33,12 @@ std::shared_ptr<ObjectID> WriteToPlasmaProcessor::process(std::shared_ptr<arrow:
 
     // Write bytes of result record batch to plasma store
     std::shared_ptr<Buffer> plasma_buffer;
-    arrow::Status s1 = client->Create(*last_plasma_object, buffer->size(), nullptr, 0, &plasma_buffer);
+    ASSERT_OK(client->Create(*last_plasma_object, buffer->size(), nullptr, 0, &plasma_buffer));
 
     //Copy into plasma
     memcpy(plasma_buffer->mutable_data(), buffer->data(), buffer->size());
 
-    arrow::Status s3 = client->Seal(*last_plasma_object);
+    ASSERT_OK(client->Seal(*last_plasma_object));
 //    std::cout << "Plasma client wrote result (" << plasma_buffer->size() << " bytes) to the plasma store" << std::endl;
 
     return last_plasma_object;
