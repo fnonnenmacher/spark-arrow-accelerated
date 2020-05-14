@@ -32,7 +32,6 @@ library {
             linkTask.get().linkerArgs.add("--std=c++14")
             linkTask.get().toolChain.set(toolChains.withType(Clang)[0])
 
-            linkTask.get().lib("$localLibPath/libprotobuf.dylib")
             linkTask.get().lib("$localLibPath/libarrow.dylib")
             linkTask.get().lib("$localLibPath/libplasma.dylib")
             linkTask.get().lib("$localLibPath/libfletcher.dylib")
@@ -41,7 +40,6 @@ library {
         } else if (isFamily(FAMILY_UNIX)) {
             compileTask.get().includes("${Jvm.current().javaHome}/include/linux")
 
-            linkTask.get().lib("$localLibPath/libprotobuf.so")
             linkTask.get().lib("$localLibPath/libarrow.so")
             linkTask.get().lib("$localLibPath/libplasma.so")
             linkTask.get().lib("$localLibPath/libfletcher.so")
