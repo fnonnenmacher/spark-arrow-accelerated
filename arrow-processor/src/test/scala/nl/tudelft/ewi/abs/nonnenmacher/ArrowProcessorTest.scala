@@ -54,7 +54,7 @@ class ArrowProcessorTest extends FunSuite {
     assert(stringData == Seq("number-0", "number-1", "number-2", "number-3", "number-4"))
   }
 
-  test("calculate the sum of an example vector") {
+  ignore("calculate the sum of an example vector") {
 
     val root = ArrowVectorBuilder.toSchemaRoot(LongVector("some-values", Seq(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)))
 
@@ -82,44 +82,4 @@ class ArrowProcessorTest extends FunSuite {
     assert(resVec1.get(2) == 333)
   }
 
-  test("add up three vectors with Gandiva") {
-
-    val int32 = new ArrowType.Int(32, true);
-    val in1: Field = Field.nullable("in1", int32)
-    val in2: Field = Field.nullable("in2", int32)
-    val in3: Field = Field.nullable("in3", int32)
-
-    val out: Field = Field.nullable("out", int32)
-
-    val args: util.List[TreeNode] = new util.ArrayList[TreeNode]
-
-    // in1 + in2 + in3
-    val add1: TreeNode = TreeBuilder.makeFunction("add", List(TreeBuilder.makeField(in1), TreeBuilder.makeField(in2)).asJava, int32)
-    val add: TreeNode = TreeBuilder.makeFunction("add", List(add1, TreeBuilder.makeField(in3)).asJava, int32)
-    val expr: ExpressionTree = TreeBuilder.makeExpression(add, out)
-
-    val cols = List(in1, in2, in3)
-    val schema: Schema = new Schema(cols.asJava)
-
-    val eval: Projector = Projector.make(schema, List(expr).asJava)
-
-    val v1 = IntegerVector("in1", Seq(1, 2, 3))
-    val v2 = IntegerVector("in2", Seq(10, 20, 30))
-    val v3 = IntegerVector("in3", Seq(100, 200, 300))
-    val root = ArrowVectorBuilder.toSchemaRoot(v1, v2, v3)
-
-    val recordBatch: ArrowRecordBatch = new VectorUnloader(root).getRecordBatch
-
-    val outVector = new IntVector("out", GlobalAllocator.newChildAllocator(classOf[ArrowProcessorTest]))
-
-    outVector.allocateNew(root.getRowCount)
-
-    val output: List[ValueVector] = List(outVector)
-    eval.evaluate(recordBatch, output.asJava)
-
-    assert(outVector.get(0) == 111)
-    assert(outVector.get(1) == 222)
-    assert(outVector.get(2) == 333)
-    println(outVector.get(0))
-  }
 }
