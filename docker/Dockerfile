@@ -19,6 +19,19 @@ RUN apt-get update && apt-get install -y llvm-8 \
         maven \
         && rm -rf /var/lib/apt/lists/*
 
+ENV JAVA_HOME /usr/lib/jvm/java-8-openjdk-amd64/
+
+# Download & install protobuf
+RUN wget -q https://github.com/protocolbuffers/protobuf/releases/download/v3.11.4/protobuf-cpp-3.11.4.tar.gz && \
+        mkdir /protobuf &&\
+        tar -xzf protobuf-cpp-3.11.4.tar.gz --strip-components 1 -C /protobuf &&\
+        rm -f protobuf-cpp-3.11.4.tar.gz &&\
+        cd /protobuf &&\
+        ./configure &&\
+        make &&\
+        make install &&\
+        ldconfig
+
 # Download apache arrow
 RUN wget -q http://apache.40b.nl/arrow/arrow-0.17.0/apache-arrow-0.17.0.tar.gz &&\
         mkdir /arrow &&\
@@ -28,14 +41,10 @@ RUN wget -q http://apache.40b.nl/arrow/arrow-0.17.0/apache-arrow-0.17.0.tar.gz &
 # Build and install apache arrow with plasma server & plasma jni lib
 RUN mkdir /arrow/cpp/release &&\
         cd /arrow/cpp/release &&\
-        cmake -DARROW_PLASMA=ON -DARROW_PLASMA_JAVA_CLIENT=ON -DARROW_PARQUET=ON -DARROW_GANDIVA=ON -DARROW_GANDIVA_JAVA=ON .. &&\
+        cmake -DARROW_PARQUET=ON -DARROW_GANDIVA=ON -DARROW_GANDIVA_JAVA=ON .. &&\
         make &&\
         make install &&\
-        cp /arrow/cpp/release/release/libplasma_java.so /usr/local/lib/
-
-ENV JAVA_HOME /usr/lib/jvm/java-8-openjdk-amd64/
-
-RUN     cd /arrow/java &&\
+        cd /arrow/java &&\
         mvn clean install -P arrow-jni -am -DskipTests -Darrow.cpp.build.dir=../../cpp/release/release
 
 # Download Fletcher

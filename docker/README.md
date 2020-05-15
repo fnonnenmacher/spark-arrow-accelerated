@@ -10,6 +10,7 @@
 * `0.2`: Adds fletcher runtime and echo platform 
 * `0.3`: Adds arrow parquet library
 * `0.4`: Adds llvm-8 and arrow `gandiva`, changes base image to ubuntu (on alpine llvm-8 could not be installed easily)
+* `0.5`: Remove plasma, add  
 
 ## Commands:
 * Build: `docker build -t fnonnenmacher/arrow-plasma-java:<VERSION> .`
