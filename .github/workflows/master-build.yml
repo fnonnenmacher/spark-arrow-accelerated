@@ -15,6 +15,6 @@ jobs:
     - uses: actions/checkout@v2
     - name: Runs the gradle tests in container fnonnenmacher/arrow-plasma-java
       run: |
-        docker run \exit
+        docker run \
         -v ${{ github.workspace }}:/app fnonnenmacher/arrow-plasma-java:0.5 \
         /bin/bash -c "./gradlew build"
