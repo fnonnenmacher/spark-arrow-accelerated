@@ -12,9 +12,22 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - name: Checkout Repository
+      uses: actions/checkout@v2
     - name: Runs the gradle tests in container fnonnenmacher/arrow-plasma-java
       run: |
         docker run \
         -v ${{ github.workspace }}:/app fnonnenmacher/arrow-plasma-java:0.5 \
         /bin/bash -c "./gradlew build"
+    - name: Archive test reports of arrow-processor
+      if: ${{ failure() }}
+      uses: actions/upload-artifact@v1
+      with:
+        name: arrow-processor-test-report
+        path: arrow-processor/build/reports/tests/test
+    - name: Archive test reports of spark-extension
+      if: ${{ failure() }}
+      uses: actions/upload-artifact@v1
+      with:
+        name: spark-extension-test-report
+        path: spark-extension/build/reports/tests/test
