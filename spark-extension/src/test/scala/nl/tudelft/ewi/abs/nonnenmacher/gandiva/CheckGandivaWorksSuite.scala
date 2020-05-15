@@ -1,6 +1,7 @@
 package nl.tudelft.ewi.abs.nonnenmacher.gandiva
 
-import nl.tudelft.ewi.abs.nonnenmacher.{ArrowVectorBuilder, GlobalAllocator, IntegerVector}
+import nl.tudelft.ewi.abs.nonnenmacher.GlobalAllocator
+import nl.tudelft.ewi.abs.nonnenmacher.utils.{ArrowVectorBuilder, IntegerVector}
 import org.apache.arrow.gandiva.evaluator.Projector
 import org.apache.arrow.gandiva.expression.ExpressionTree
 import org.apache.arrow.gandiva.expression.TreeBuilder.{makeExpression, makeField, makeFunction}

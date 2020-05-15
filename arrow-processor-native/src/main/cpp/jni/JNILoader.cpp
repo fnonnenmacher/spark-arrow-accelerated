@@ -17,9 +17,8 @@ jint JNI_OnLoad(JavaVM* vm, void* reserved) {
         return JNI_ERR;
     }
 
-    // Call
+    // Call internal JNI loaders
     JNI_OnLoad_JavaResizableBuffer(env, reserved);
-    JNI_OnLoad_Assertions(env, reserved);
 
     return JNI_VERSION;
 }
@@ -28,6 +27,6 @@ void JNI_OnUnload(JavaVM* vm, void* reserved) {
     JNIEnv* env;
     vm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION);
 
-
+    // Call internal JNI unloaders
     JNI_OnUnload_JavaResizableBuffer(env, reserved);
 }

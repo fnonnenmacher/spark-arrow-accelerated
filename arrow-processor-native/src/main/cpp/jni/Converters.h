@@ -6,11 +6,10 @@
 #define SPARK_EXAMPLE_CONVERTERS_H
 
 #include <jni.h>
-#include <plasma/client.h>
+#include <arrow/api.h>
+#include <iostream>
 
-jbyteArray object_id_to_java_(JNIEnv *env, const plasma::ObjectID &object_id_out);
-
-plasma::ObjectID object_id_from_java(JNIEnv *env, _jbyteArray *java_array);
+using arrow::Status;
 
 std::string get_java_string(JNIEnv *env, jstring java_string);
 
@@ -28,6 +27,5 @@ Status copy_record_batch_ito_buffers(JNIEnv* env, jobject jexpander,
                                      std::shared_ptr<arrow::RecordBatch> recordBatch,
                                      jlong *out_buf_addrs, jlong *out_buf_sizes,
                                      int out_bufs_len);
-
 
 #endif //SPARK_EXAMPLE_CONVERTERS_H

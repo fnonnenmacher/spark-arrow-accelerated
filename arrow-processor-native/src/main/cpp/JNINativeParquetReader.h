@@ -1,14 +1,9 @@
 #ifndef SPARK_EXAMPLE_JNINATIVEPARQUETREADER_H
 #define SPARK_EXAMPLE_JNINATIVEPARQUETREADER_H
 
-
-#include "Iterator.h"
-#include <plasma/client.h>
 #include <iostream>
 #include <arrow/api.h>
 #include <parquet/arrow/reader.h>
-
-using namespace plasma;
 
 class NativeParquetReader {
 private:

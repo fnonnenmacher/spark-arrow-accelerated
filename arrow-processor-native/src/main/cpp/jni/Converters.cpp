@@ -4,20 +4,8 @@
 #include "JavaResizableBuffer.h"
 #include "Assertions.h"
 
-using namespace plasma;
 using namespace std;
 
-jbyteArray object_id_to_java_(JNIEnv *env, const ObjectID &object_id_out) {
-    jbyteArray javaObjectId = env->NewByteArray(UniqueID::size());
-    env->SetByteArrayRegion(javaObjectId, 0, UniqueID::size(), (jbyte *) object_id_out.data());
-    return javaObjectId;
-}
-
-plasma::ObjectID object_id_from_java(JNIEnv *env, _jbyteArray *java_array) {
-    char *object_id_bin = (char *) env->GetByteArrayElements(java_array, nullptr);
-    ObjectID object_id = ObjectID::from_binary(object_id_bin);
-    return object_id;
-}
 
 string get_java_string(JNIEnv *env, jstring java_string) {
     const jsize strLen = env->GetStringUTFLength(java_string);
@@ -137,10 +125,12 @@ Status copy_record_batch_ito_buffers(JNIEnv *env, jobject jexpander,
 
         // Copy validity buffer
         auto validity_buffer = column->data()->buffers[0];
+
         if (validity_buffer == nullptr) { //validity buffer not defined -> all values are no null
             memset((void *) out_buf_addrs[buf_idx], 0xFF, out_buf_sizes[buf_idx]);
+
         } else {
-            ASSERT(validity_buffer->size() == out_buf_sizes[buf_idx],
+            ASSERT(validity_buffer->size() <= out_buf_sizes[buf_idx],
                     "Validity buffer of field '" + field->name() +
                     "' cannot be copied, because it has the wrong size.");
 
@@ -152,20 +142,20 @@ Status copy_record_batch_ito_buffers(JNIEnv *env, jobject jexpander,
 
         // copy value buffer
         auto value_buffer = column->data()->buffers[1];
-        ASSERT(value_buffer->size() == out_buf_sizes[buf_idx],
+        ASSERT(value_buffer->size() <= out_buf_sizes[buf_idx],
                "Value buffer of field '" + field->name() +
                "' cannot be copied, because it has the wrong size.");
 
         memcpy((void *) out_buf_addrs[buf_idx], (void *) value_buffer->address(), value_buffer->size());
         buf_idx++;
-        std::cout << "Value buffer of field '" << field->name() << "' copied." << std::endl;;
+//        std::cout << "Value buffer of field '" << field->name() << "' copied." << std::endl;;
 
-        if (arrow::is_binary_like(field->type()->id())) { // field with variable width //TODO
-            ASSERT(buf_idx <=out_bufs_len, "insufficient number of in_buf_addrs");
+        if (arrow::is_binary_like(field->type()->id())) { // field with variable width
+            ASSERT(buf_idx <= out_bufs_len, "insufficient number of in_buf_addrs");
 
             // copy offset buffer
             auto offset_buffer = column->data()->buffers[2];
-            auto resizable_buffer = std::make_shared<JavaResizableBuffer>(env, jexpander, 0,
+            auto resizable_buffer = std::make_shared<JavaResizableBuffer>(env, jexpander, variable_width_vector_idx,
                                                                           reinterpret_cast<uint8_t *>(out_buf_addrs[buf_idx]),
                                                                           out_buf_sizes[buf_idx]);
             ASSERT_OK(resizable_buffer->Resize(offset_buffer->size(), false));
@@ -173,6 +163,7 @@ Status copy_record_batch_ito_buffers(JNIEnv *env, jobject jexpander,
             memcpy((void *) resizable_buffer->address(), (void *) offset_buffer->address(),
                    offset_buffer->size());
 
+            variable_width_vector_idx++;
             buf_idx++;
         }
     }

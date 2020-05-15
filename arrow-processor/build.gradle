@@ -35,7 +35,6 @@ dependencies {
         compile "org.apache.arrow.gandiva:arrow-gandiva:$arrowVersion"
     }
 
-
     //USE JUnit 4 instead of 5 because scalatest is not compatible with jUni5
     testCompile 'org.scalatest:scalatest_2.12:3.0.1'
     testImplementation('junit:junit:4.13')
@@ -49,13 +48,9 @@ test {
     systemProperty "java.library.path", libraryPaths.join(':')
 }
 
-def nativeClasses = ['nl.tudelft.ewi.abs.nonnenmacher.ArrowProcessorJni',
-                     'nl.tudelft.ewi.abs.nonnenmacher.NativeRecordBatchIterator',
-                     'nl.tudelft.ewi.abs.nonnenmacher.NativeRecordBatchIterator$Initializer',
-                     'nl.tudelft.ewi.abs.nonnenmacher.ThreeIntAdderProcessor',
-                     'nl.tudelft.ewi.abs.nonnenmacher.ThreeIntAdderProcessor$Initializer',
-                     'nl.tudelft.ewi.abs.nonnenmacher.NativeParquetReader',
-                     'nl.tudelft.ewi.abs.nonnenmacher.NativeParquetReader$Initializer']
+def nativeClasses = ['nl.tudelft.ewi.abs.nonnenmacher.JNIProcessor',
+                     'nl.tudelft.ewi.abs.nonnenmacher.JNIProcessorFactory$Initializer',
+                     'nl.tudelft.ewi.abs.nonnenmacher.NativeParquetReader']
 
 task generateNativeHeaders(type: Exec) {
 

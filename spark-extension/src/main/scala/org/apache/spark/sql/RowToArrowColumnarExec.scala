@@ -38,7 +38,7 @@ class RowToArrowColumnarExec(override val child: SparkPlan) extends RowToColumna
     child.execute().mapPartitionsInternal { rowIter =>
 
       val allocator =
-        ArrowUtils.rootAllocator.newChildAllocator(s"${this.getClass.getSimpleName}", 0, Long.MaxValue)
+        ArrowUtils.rootAllocator.newChildAllocator(s"ABC", 0, Long.MaxValue)
 
       val arrowSchema = ArrowUtils.toArrowSchema(schema, conf.sessionLocalTimeZone)
       val root = VectorSchemaRoot.create(arrowSchema, allocator)

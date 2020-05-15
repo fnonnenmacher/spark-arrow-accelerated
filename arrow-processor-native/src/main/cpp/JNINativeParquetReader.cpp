@@ -3,11 +3,11 @@
 //
 
 #include "nl_tudelft_ewi_abs_nonnenmacher_NativeParquetReader.h"
-#include "nl_tudelft_ewi_abs_nonnenmacher_NativeParquetReader_Initializer.h"
+#include "nl_tudelft_ewi_abs_nonnenmacher_JNIProcessorFactory_Initializer.h"
 #include "JNINativeParquetReader.h"
 #include "jni/Assertions.h"
 #include "utils.h"
-#include "jni/ProtoTypeDeserializer.h"
+#include "jni/ProtobufSchemaDeserializer.h"
 #include "jni/Converters.h"
 
 NativeParquetReader::NativeParquetReader(const std::string &file_name, const std::shared_ptr<arrow::Schema> &schema,
@@ -49,7 +49,7 @@ std::shared_ptr<arrow::Schema> NativeParquetReader::schema() const {
     return _schema;
 }
 
-JNIEXPORT jlong JNICALL Java_nl_tudelft_ewi_abs_nonnenmacher_NativeParquetReader_00024Initializer_init
+JNIEXPORT jlong JNICALL Java_nl_tudelft_ewi_abs_nonnenmacher_JNIProcessorFactory_00024Initializer_initNativeParquetReader
         (JNIEnv *env, jobject, jstring java_file_name, jbyteArray schema_arr, jint num_rows) {
 
     std::string file_name = get_java_string(env, java_file_name);

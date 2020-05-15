@@ -1,22 +1,28 @@
-package nl.tudelft.ewi.abs.nonnenmacher.gandiva
+package nl.tudelft.ewi.abs.nonnenmacher.partial.projection
 
-import nl.tudelft.ewi.abs.nonnenmacher.GlobalAllocator
+import ArrowFieldDefinitionHelper.nullableInt
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.util.ArrowUtils
 import org.apache.spark.sql.{ArrowColumnarConversionRule, SparkSession}
 import org.junit.runner.RunWith
+import org.scalatest.FunSuite
 import org.scalatest.junit.JUnitRunner
-import org.scalatest.{BeforeAndAfterEach, FunSuite}
 
 
 @RunWith(classOf[JUnitRunner])
-class GandivaProjectionSuite extends FunSuite with BeforeAndAfterEach {
+class PartialProjectionOnFpgaSuite extends FunSuite {
 
-  test("that a simple addition query can be executed on Gandiva") {
+  test("example addition of three values is executed on cpp code") {
+
+    //Define FPGAModules
+    val in1: In = In(nullableInt("in1"))
+    val in2: In = In(nullableInt("in2"))
+    val in3: In = In(nullableInt("in3"))
+
+    val sumOfThree = FPGAModule("sumOfThree", query = in1 + in2 + in3, output = nullableInt("out"))
 
     val spark = SparkSession
       .builder()
-      .withExtensions(ProjectionOnGandivaExtension())
+      .withExtensions(ProjectionOnFPGAExtension(sumOfThree))
       .withExtensions(_.injectColumnar(_ => ArrowColumnarConversionRule))
       .appName("Spark SQL basic example")
       .config("spark.master", "local")
@@ -36,7 +42,7 @@ class GandivaProjectionSuite extends FunSuite with BeforeAndAfterEach {
 
     val df = spark.createDataset(tuples)
       .toDF("a", "b", "c", "d")
-      .repartition(2) // Enforces a separate Projection step
+      .repartition(3) // Enforces a separate Projection step
     // otherwise Spark optimizes the projection and combines it with the data generation
 
     val res = df.select((col("a") + col("b") + col("c") * col("d")) * 4)
@@ -56,32 +62,5 @@ class GandivaProjectionSuite extends FunSuite with BeforeAndAfterEach {
     assert(results.length == 6)
     println("Result: " + results.toSet)
     assert(Set(12, 32, 60, 96, 140, 192).subsetOf(results.toSet))
-  }
-
-  test("that also a processing of multiple batches (1 million rows) works") {
-
-    val spark = SparkSession
-      .builder()
-      .withExtensions(ProjectionOnGandivaExtension())
-      .withExtensions(_.injectColumnar(_ => ArrowColumnarConversionRule))
-      .appName("Spark SQL basic example")
-      .config("spark.master", "local")
-      .getOrCreate()
-
-    import spark.implicits._
-
-    val df = spark.range(1e6.toLong).rdd.map(x => (x, (1e6 - x).toLong, x * 2))
-      .toDF("a", "b", "c")
-      .select(col("a") * col("b"), col("b") + col("c"), col("c") * 2)
-
-    df.take(10).foreach(println(_))
-    println(df.count())
-  }
-
-  // Close and delete the temp file
-  override def afterEach() {
-    //Check that all previously allocated memory is released
-    assert(ArrowUtils.rootAllocator.getAllocatedMemory == 0)
-    assert(GlobalAllocator.getAllocatedMemory == 0)
   }
 }

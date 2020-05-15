@@ -3,32 +3,15 @@
 //
 
 #include "ThreeIntAdderProcessor.h"
-#include "SerializeBatchProcessor.h"
-#include "PlasmaProcessor.h"
+#include "nl_tudelft_ewi_abs_nonnenmacher_JNIProcessorFactory_Initializer.h"
 #include "jni/Assertions.h"
+#include "jni/ProtobufSchemaDeserializer.h"
+
 
 using arrow::Int32Builder;
 
-ThreeIntAdderProcessor::ThreeIntAdderProcessor() {
-    plasma_reader_processor = std::make_unique<ReadFromPlasmaProcessor>();
-    deserialize_processor = std::make_unique<DeserializeBatchProcessor>();
-    serialize_processor = std::make_unique<SerializeBatchProcessor>();
-    plasma_writer_processor = std::make_unique<WriteToPlasmaProcessor>();
-}
+std::shared_ptr<arrow::RecordBatch> ThreeIntAdderProcessor::process(std::shared_ptr<arrow::RecordBatch> record_batch) {
 
-shared_ptr<ObjectID> ThreeIntAdderProcessor::process(shared_ptr<ObjectID> object_id) {
-    auto rb_in_data = plasma_reader_processor->process(object_id);
-    auto rb_in = deserialize_processor->process(rb_in_data);
-
-    auto rb_out = process(rb_in);
-
-    auto rb_out_data = serialize_processor->process(rb_out);
-    auto object_id_out = plasma_writer_processor->process(rb_out_data);
-
-    return object_id_out;
-}
-
-shared_ptr<arrow::RecordBatch> ThreeIntAdderProcessor::process(const shared_ptr<arrow::RecordBatch>& record_batch) {
     // get individual input field vectors
     auto vector_in1 = std::static_pointer_cast<arrow::Int32Array>(record_batch->column(0));
     auto vector_in2 = std::static_pointer_cast<arrow::Int32Array>(record_batch->column(1));
@@ -38,7 +21,7 @@ shared_ptr<arrow::RecordBatch> ThreeIntAdderProcessor::process(const shared_ptr<
     arrow::MemoryPool *pool = arrow::default_memory_pool();
     Int32Builder res_builder(pool);
 
-    //iterate over rows and bild sum for every row
+    // iterate over rows and calculate sum for every row
     for (int i = 0; i < record_batch->num_rows(); i++) {
 
         int v1 = vector_in1->raw_values()[i];
@@ -64,3 +47,12 @@ shared_ptr<arrow::RecordBatch> ThreeIntAdderProcessor::process(const shared_ptr<
     return arrow::RecordBatch::Make(result_schema, record_batch->num_rows(), vec);
 }
 
+JNIEXPORT jlong JNICALL Java_nl_tudelft_ewi_abs_nonnenmacher_JNIProcessorFactory_00024Initializer_initThreeIntAddingProcessor
+        (JNIEnv *env, jobject, jbyteArray schema_arr) {
+
+    jsize schema_len = env->GetArrayLength(schema_arr);
+    jbyte *schema_bytes = env->GetByteArrayElements(schema_arr, 0);
+    std::shared_ptr<arrow::Schema> schema = ReadSchemaFromProtobufBytes(schema_bytes, schema_len);
+
+    return (jlong) new ThreeIntAdderProcessor(schema);
+}

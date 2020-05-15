@@ -3,8 +3,11 @@ package nl.tudelft.ewi.abs.nonnenmacher
 import org.apache.arrow.memory.{BufferAllocator, RootAllocator}
 
 object GlobalAllocator {
+  def getAllocatedMemory(): Long = allocator.getAllocatedMemory
 
-  private val allocator = new RootAllocator(Long.MaxValue);
+  def close(): Unit = allocator.close()
+
+  private val allocator = new RootAllocator(Long.MaxValue)
 
   def newChildAllocator(name: String, initReservation: Long = 0): BufferAllocator = {
     allocator.newChildAllocator(name, initReservation, Long.MaxValue)
