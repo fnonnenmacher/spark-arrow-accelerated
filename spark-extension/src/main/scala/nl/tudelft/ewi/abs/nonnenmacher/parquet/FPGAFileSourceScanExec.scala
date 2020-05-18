@@ -4,13 +4,14 @@ import nl.tudelft.ewi.abs.nonnenmacher.JNIProcessorFactory
 import org.apache.arrow.vector.VectorSchemaRoot
 import org.apache.arrow.vector.types.pojo.Schema
 import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.ColumnarBatchArrowConverter.VectorRootToColumnarBatch
 import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.expressions.{Attribute, Expression}
 import org.apache.spark.sql.execution.FileSourceScanExec
 import org.apache.spark.sql.execution.datasources.HadoopFsRelation
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.util.ArrowUtils
-import org.apache.spark.sql.vectorized
+import org.apache.spark.sql.{ColumnarBatchArrowConverter, vectorized}
 import org.apache.spark.sql.vectorized.{ColumnVector, ColumnarBatch}
 import org.apache.spark.util.collection.BitSet
 import org.apache.spark.{Partition, TaskContext}
@@ -42,19 +43,13 @@ class FPGAFileSourceScanExec(@transient relation: HadoopFsRelation,
 
         JNIProcessorFactory
           .parquetReader(fileName, schema, 100) //TODO read from properties
-          .map(toResultBatch) //TODO CLOSE
+          .map(VectorRootToColumnarBatch)
       }
 
       override protected def getPartitions: Array[Partition] = Array(new Partition {
         override def index: Int = 0
       })
     }
-  }
-
-  private def toResultBatch(root: VectorSchemaRoot): ColumnarBatch = {
-    // only copy vectors which are really relevant.
-    val arrowVectors: Array[ColumnVector] = root.getFieldVectors.asScala.map(x => new vectorized.ArrowColumnVector(x)).toArray;
-    new ColumnarBatch(arrowVectors, root.getRowCount)
   }
 
   /** HACK; because overriding a case class is normally not a good idea. */

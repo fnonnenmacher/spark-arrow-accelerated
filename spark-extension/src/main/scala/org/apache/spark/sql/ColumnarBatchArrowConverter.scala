@@ -1,5 +1,6 @@
 package org.apache.spark.sql
 
+import nl.tudelft.ewi.abs.nonnenmacher.gandiva.ArrowColumnVectorWithAccessibleFieldVectorAndSelectionVec
 import nl.tudelft.ewi.abs.nonnenmacher.utils.ClosableFunction
 import org.apache.arrow.vector.VectorSchemaRoot
 import org.apache.spark.sql.vectorized.{ColumnVector, ColumnarBatch}
@@ -14,6 +15,7 @@ object ColumnarBatchArrowConverter {
     override def apply(batch: ColumnarBatch): VectorSchemaRoot = {
       val fieldVectors = (0 until batch.numCols).map(batch.column).map {
         case ArrowColumnVectorWithAccessibleFieldVector(fieldVector) => fieldVector
+        case ArrowColumnVectorWithAccessibleFieldVectorAndSelectionVec(_, fieldVector) => fieldVector
         case _ => throw new IllegalStateException(s"${getClass.getSimpleName} does only support columnar data in arrow format.")
       }
 

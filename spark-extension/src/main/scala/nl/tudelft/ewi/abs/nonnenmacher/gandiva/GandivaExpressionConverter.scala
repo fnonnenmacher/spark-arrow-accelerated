@@ -12,8 +12,7 @@ import scala.collection.JavaConverters._
 object GandivaExpressionConverter {
 
   def transform(expr: Expression): TreeNode = expr match {
-    case bin @BinaryArithmetic(_,_)=> makeBinArithmeticFunction(bin)
-    case bin @BinaryComparison(_,_)=> makeBinComparisonFunction(bin)
+    case bin @BinaryOperator(_,__) => makeBinaryFunction(bin)
     case Literal(value, dataType) => makeLiteral(value, dataType)
     case AttributeReference(name, dataType, nullable, _) => makeFieldReference(name, dataType, nullable)
     case Alias(child, _) => transform(child) //skip
@@ -47,6 +46,18 @@ object GandivaExpressionConverter {
 
   private def makeBinArithmeticFunction(bin: BinaryArithmetic): TreeNode = {
     makeFunction(functionName(bin), List(transform(bin.left), transform(bin.right)).asJava, ArrowUtils.toArrowType(bin.dataType, null))
+  }
+
+  private def functionNameOtherBinaryOp(binaryOperator: BinaryOperator) : String = binaryOperator match {
+    case Or(_, _) => "or"
+    case And(_, _) => "and"
+  }
+
+  private def makeBinaryFunction(bin: BinaryOperator): TreeNode = bin match {
+    case binA @BinaryArithmetic(_,_)=> makeBinArithmeticFunction(binA)
+    case binC @BinaryComparison(_,_)=> makeBinComparisonFunction(binC)
+    case Or(_, _) => TreeBuilder.makeOr(List(transform(bin.left), transform(bin.right)).asJava)
+    case And(_, _) => TreeBuilder.makeAnd(List(transform(bin.left), transform(bin.right)).asJava)
   }
 
   private def makeLiteral(value: Any, dataType: DataType): TreeNode = dataType match {

@@ -12,7 +12,7 @@ import org.scalatest.{BeforeAndAfterEach, FunSuite}
 @RunWith(classOf[JUnitRunner])
 class GandivaProjectionSuite extends FunSuite with BeforeAndAfterEach {
 
-  test("that a simple addition query can be executed on Gandiva") {
+  ignore("that a simple addition query can be executed on Gandiva") {
 
     val spark = SparkSession
       .builder()
@@ -73,6 +73,8 @@ class GandivaProjectionSuite extends FunSuite with BeforeAndAfterEach {
     val df = spark.range(1e6.toLong).rdd.map(x => (x, (1e6 - x).toLong, x * 2))
       .toDF("a", "b", "c")
       .select(col("a") * col("b"), col("b") + col("c"), col("c") * 2)
+
+    assert(df.queryExecution.executedPlan.find(_.isInstanceOf[GandivaProjectExec]).isDefined)
 
     df.take(10).foreach(println(_))
     println(df.count())
