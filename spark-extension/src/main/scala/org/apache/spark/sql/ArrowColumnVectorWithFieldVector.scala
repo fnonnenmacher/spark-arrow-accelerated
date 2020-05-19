@@ -16,7 +16,7 @@ import org.apache.spark.unsafe.types.UTF8String
  *
  * @param vector the apache arrow field vector
  */
-case class ArrowColumnVectorWithAccessibleFieldVector(vector: FieldVector) extends ColumnVector(ArrowUtils.fromArrowField(vector.getField)) {
+case class ArrowColumnVectorWithFieldVector(vector: FieldVector) extends ColumnVector(ArrowUtils.fromArrowField(vector.getField)) {
 
   private val delegate: ArrowColumnVector = new ArrowColumnVector(vector)
 

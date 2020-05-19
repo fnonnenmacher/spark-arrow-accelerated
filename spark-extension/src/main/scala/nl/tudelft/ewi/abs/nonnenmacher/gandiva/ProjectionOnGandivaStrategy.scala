@@ -16,6 +16,7 @@ object ProjectionOnGandivaExtension {
 class ProjectionOnGandivaStrategy() extends Strategy {
 
   override def apply(plan: LogicalPlan): Seq[SparkPlan] = {
+    println("HERE: " + plan.getClass)
     plan match {
       case logical.Project(projectList, child) => Seq( GandivaProjectExec(planLater(child), projectList))
       case logical.Filter(condition, child) => Seq( GandivaFilterExec(planLater(child), condition))

@@ -1,33 +1,25 @@
 package nl.tudelft.ewi.abs.nonnenmacher.gandiva
 
-import nl.tudelft.ewi.abs.nonnenmacher.GlobalAllocator
+import nl.tudelft.ewi.abs.nonnenmacher.{GlobalAllocator, SparkSessionGenerator}
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.util.ArrowUtils
-import org.apache.spark.sql.{ArrowColumnarConversionRule, Row, SparkSession}
+import org.apache.spark.sql.{ArrowColumnarConversionRule, ArrowColumnarExtension, Row, SparkSession, SparkSessionExtensions}
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import org.scalatest.{BeforeAndAfterEach, FunSuite}
 
 
 @RunWith(classOf[JUnitRunner])
-class GandivaFilterSuite extends FunSuite with BeforeAndAfterEach {
+class GandivaFilterSuite extends FunSuite with BeforeAndAfterEach with SparkSessionGenerator{
+
+  override def withExtensions: Seq[SparkSessionExtensions => Unit] = Seq(ProjectionOnGandivaExtension(), ArrowColumnarExtension())
 
   test("that simple filter query can be executed on Gandiva") {
-
-    val spark = SparkSession
-      .builder()
-      .withExtensions(ProjectionOnGandivaExtension())
-      .withExtensions(_.injectColumnar(_ => ArrowColumnarConversionRule))
-      .appName("Spark SQL basic example")
-      .config("spark.master", "local")
-      .getOrCreate()
 
     // Deactivates whole stage codegen, helpful for debugging
     // spark.conf.set("spark.sql.codegen.wholeStage", false)
 
-
     import spark.implicits._
-
 
     val df = spark.range(10L).rdd.map(x => x)
       .toDF("value")

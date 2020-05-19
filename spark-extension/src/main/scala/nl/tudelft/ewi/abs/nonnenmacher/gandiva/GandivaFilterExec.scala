@@ -5,15 +5,14 @@ import nl.tudelft.ewi.abs.nonnenmacher.utils.ClosableFunction
 import org.apache.arrow.gandiva.evaluator.{Filter, SelectionVector, SelectionVectorInt16, SelectionVectorInt32}
 import org.apache.arrow.gandiva.expression.TreeBuilder.makeCondition
 import org.apache.arrow.memory.BufferAllocator
-import org.apache.arrow.vector.ipc.message.ArrowRecordBatch
-import org.apache.arrow.vector.{VectorSchemaRoot, VectorUnloader}
+import org.apache.arrow.vector.VectorSchemaRoot
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.ColumnarBatchArrowConverter.ColumnarBatchToVectorRoot
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.{Attribute, Expression}
 import org.apache.spark.sql.execution.{SparkPlan, UnaryExecNode}
 import org.apache.spark.sql.util.ArrowUtils
 import org.apache.spark.sql.vectorized.{ColumnVector, ColumnarBatch}
+import org.apache.spark.sql.{ArrowColumnVectorWithFieldVector, ColumnarBatchWithSelectionVector, SelectionColumnVector}
 
 import scala.collection.JavaConverters._
 
@@ -27,32 +26,30 @@ case class GandivaFilterExec(child: SparkPlan, filterExpression: Expression) ext
 
   override protected def doExecuteColumnar(): RDD[ColumnarBatch] = {
     child.executeColumnar().mapPartitions { batchIter =>
-      batchIter.mapAndAutoClose(ColumnarBatchToVectorRoot)
+      batchIter
+        .map(ColumnarBatchWithSelectionVector.from)
         .mapAndAutoClose(new GandivaFilter)
+        .map(_.toColumnarBatch)
     }
   }
 
-  private class GandivaFilter extends ClosableFunction[VectorSchemaRoot, ColumnarBatch] {
+  private class GandivaFilter extends ClosableFunction[ColumnarBatchWithSelectionVector, ColumnarBatchWithSelectionVector] {
 
     private val allocator: BufferAllocator = ArrowUtils.rootAllocator.newChildAllocator(s"${this.getClass.getSimpleName}", 0, Long.MaxValue)
     private val gandivaCondition = makeCondition(GandivaExpressionConverter.transform(filterExpression))
     private val gandivaFilter: Filter = Filter.make(ArrowUtils.toArrowSchema(child.schema, conf.sessionLocalTimeZone), gandivaCondition)
+    private var selectionVector: SelectionVector = _
 
-    var batchOut : ColumnarBatch = _;
 
-    override def apply(rootIn: VectorSchemaRoot): ColumnarBatch = {
-      val batchIn = new VectorUnloader(rootIn).getRecordBatch
+    override def apply(batchIn: ColumnarBatchWithSelectionVector): ColumnarBatchWithSelectionVector = {
+      if (selectionVector!= null)  selectionVector.getBuffer.close()
 
-      val selectionVector: SelectionVector = newSelectionVector(rootIn.getRowCount)
+      val buffers = batchIn.fieldVectors.flatMap(f => f.getFieldBuffers.asScala)
+      selectionVector = newSelectionVector(batchIn.fieldVectorRows)
 
-      gandivaFilter.evaluate(batchIn, selectionVector)
-      batchIn.close()
+      gandivaFilter.evaluate(batchIn.fieldVectorRows, buffers.asJava, selectionVector)
 
-      ArrowColumnVectorWithAccessibleFieldVectorAndSelectionVec
-
-      if (batchOut != null) batchOut.close()
-      batchOut = toRecordBatch(rootIn, selectionVector)
-      batchOut
+      new ColumnarBatchWithSelectionVector(batchIn.fieldVectors, batchIn.fieldVectorRows, selectionVector)
     }
 
     def newSelectionVector(numRows: Int): SelectionVector = {
@@ -66,18 +63,9 @@ case class GandivaFilterExec(child: SparkPlan, filterExpression: Expression) ext
     }
 
     override def close(): Unit = {
-      batchOut.close()
       gandivaFilter.close()
+      selectionVector.getBuffer.close()
       allocator.close()
-    }
-
-    def toRecordBatch(root: VectorSchemaRoot, selectionVector: SelectionVector): ColumnarBatch = {
-      val arrowVectors = root.getFieldVectors.asScala.map(x => new ArrowColumnVectorWithAccessibleFieldVectorAndSelectionVec(selectionVector, x)).toArray[ColumnVector]
-
-      //combine all column vectors in ColumnarBatch
-      val batch = new ColumnarBatch(arrowVectors)
-      batch.setNumRows(selectionVector.getRecordCount)
-      batch
     }
   }
 

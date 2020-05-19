@@ -9,6 +9,7 @@ import org.apache.arrow.vector.types.pojo.Field
 import org.apache.arrow.vector.{ValueVector, VectorSchemaRoot, VectorUnloader}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.ColumnarBatchArrowConverter.{ColumnarBatchToVectorRoot, VectorRootToColumnarBatch}
+import org.apache.spark.sql.ColumnarBatchWithSelectionVector
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.{Attribute, AttributeReference, NamedExpression}
 import org.apache.spark.sql.execution.{SparkPlan, UnaryExecNode}
@@ -37,13 +38,14 @@ case class GandivaProjectExec(child: SparkPlan, projectionList: Seq[NamedExpress
 
     child.executeColumnar().mapPartitions { batchIter =>
 
-      batchIter.mapAndAutoClose(ColumnarBatchToVectorRoot)
+      batchIter
+        .map(ColumnarBatchWithSelectionVector.from)
         .mapAndAutoClose(new GandivaProjection)
-        .map(VectorRootToColumnarBatch)
+        .map(_.toColumnarBatch)
     }
   }
 
-  private class GandivaProjection extends ClosableFunction[VectorSchemaRoot, VectorSchemaRoot] {
+  private class GandivaProjection extends ClosableFunction[ColumnarBatchWithSelectionVector, ColumnarBatchWithSelectionVector] {
 
     private val allocator: BufferAllocator = ArrowUtils.rootAllocator.newChildAllocator(s"${this.getClass.getSimpleName}", 0, Long.MaxValue)
     private val treeNodes = projectionList.map(GandivaExpressionConverter.transform)
@@ -51,18 +53,22 @@ case class GandivaProjectExec(child: SparkPlan, projectionList: Seq[NamedExpress
     private val gandivaProjector: Projector = Projector.make(ArrowUtils.toArrowSchema(child.schema, conf.sessionLocalTimeZone), expressionTrees.asJava)
     private val rootOut = VectorSchemaRoot.create(ArrowUtils.toArrowSchema(schema, conf.sessionLocalTimeZone), allocator)
 
-    override def apply(rootIn: VectorSchemaRoot): VectorSchemaRoot = {
-      val batchIn = new VectorUnloader(rootIn).getRecordBatch
+    override def apply(batchIn: ColumnarBatchWithSelectionVector): ColumnarBatchWithSelectionVector = {
+      val buffers = batchIn.fieldVectors.flatMap(f => f.getFieldBuffers.asScala).asJava
 
       //allocate memory for  all field vectors!
-      rootOut.setRowCount(rootIn.getRowCount)
+      rootOut.clear()
+      rootOut.setRowCount(batchIn.getRecordCount.toInt)
+      val vectors = rootOut.getFieldVectors.asScala.map(_.asInstanceOf[ValueVector])
 
-      val vectors = rootOut.getFieldVectors.asScala.map(_.asInstanceOf[ValueVector]).asJava
-      gandivaProjector.evaluate(batchIn, vectors)
+      if (batchIn.selectionVector == null){
+        gandivaProjector.evaluate(batchIn.fieldVectorRows, buffers,  vectors.asJava)
+      }else {
+        gandivaProjector.evaluate(batchIn.fieldVectorRows, buffers,  batchIn.selectionVector, vectors.asJava)
+      }
 
-      batchIn.close()
 
-      rootOut
+      new ColumnarBatchWithSelectionVector(rootOut.getFieldVectors.asScala, batchIn.getRecordCount.toInt, null)
     }
 
     override def close(): Unit = {

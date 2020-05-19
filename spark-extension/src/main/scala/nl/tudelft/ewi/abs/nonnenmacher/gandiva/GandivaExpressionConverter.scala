@@ -48,16 +48,11 @@ object GandivaExpressionConverter {
     makeFunction(functionName(bin), List(transform(bin.left), transform(bin.right)).asJava, ArrowUtils.toArrowType(bin.dataType, null))
   }
 
-  private def functionNameOtherBinaryOp(binaryOperator: BinaryOperator) : String = binaryOperator match {
-    case Or(_, _) => "or"
-    case And(_, _) => "and"
-  }
-
   private def makeBinaryFunction(bin: BinaryOperator): TreeNode = bin match {
-    case binA @BinaryArithmetic(_,_)=> makeBinArithmeticFunction(binA)
-    case binC @BinaryComparison(_,_)=> makeBinComparisonFunction(binC)
-    case Or(_, _) => TreeBuilder.makeOr(List(transform(bin.left), transform(bin.right)).asJava)
-    case And(_, _) => TreeBuilder.makeAnd(List(transform(bin.left), transform(bin.right)).asJava)
+    case binA :BinaryArithmetic=> makeBinArithmeticFunction(binA)
+    case binC :BinaryComparison => makeBinComparisonFunction(binC)
+    case or: Or => TreeBuilder.makeOr(List(transform(bin.left), transform(bin.right)).asJava)
+    case and: And => TreeBuilder.makeAnd(List(transform(bin.left), transform(bin.right)).asJava)
   }
 
   private def makeLiteral(value: Any, dataType: DataType): TreeNode = dataType match {

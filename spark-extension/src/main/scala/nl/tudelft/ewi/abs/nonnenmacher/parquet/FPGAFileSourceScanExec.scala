@@ -27,7 +27,6 @@ class FPGAFileSourceScanExec(@transient relation: HadoopFsRelation,
                              override val tableIdentifier: Option[TableIdentifier])
   extends FileSourceScanExec(relation, output, requiredSchema, partitionFilters, optionalBucketSet, dataFilters, tableIdentifier) {
 
-
   override lazy val supportsColumnar: Boolean = true;
 
   protected override def doExecuteColumnar(): RDD[ColumnarBatch] = {

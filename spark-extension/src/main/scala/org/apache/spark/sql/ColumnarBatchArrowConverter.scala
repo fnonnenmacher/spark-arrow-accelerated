@@ -1,6 +1,5 @@
 package org.apache.spark.sql
 
-import nl.tudelft.ewi.abs.nonnenmacher.gandiva.ArrowColumnVectorWithAccessibleFieldVectorAndSelectionVec
 import nl.tudelft.ewi.abs.nonnenmacher.utils.ClosableFunction
 import org.apache.arrow.vector.VectorSchemaRoot
 import org.apache.spark.sql.vectorized.{ColumnVector, ColumnarBatch}
@@ -11,19 +10,21 @@ object ColumnarBatchArrowConverter {
 
   def ColumnarBatchToVectorRoot: ClosableFunction[ColumnarBatch, VectorSchemaRoot] = new ClosableFunction[ColumnarBatch, VectorSchemaRoot] {
 
-    var root :VectorSchemaRoot = _
+    var root: VectorSchemaRoot = _
+
     override def apply(batch: ColumnarBatch): VectorSchemaRoot = {
-      val fieldVectors = (0 until batch.numCols).map(batch.column).map {
-        case ArrowColumnVectorWithAccessibleFieldVector(fieldVector) => fieldVector
-        case ArrowColumnVectorWithAccessibleFieldVectorAndSelectionVec(_, fieldVector) => fieldVector
+      //TODO
+      val fieldVectors = (1 until batch.numCols).map(batch.column).map {
+        case ArrowColumnVectorWithFieldVector(fieldVector) => fieldVector
         case _ => throw new IllegalStateException(s"${getClass.getSimpleName} does only support columnar data in arrow format.")
       }
 
-      if(root !=null) root.close()
+      if (root != null) root.close()
       root = new VectorSchemaRoot(fieldVectors.asJava)
       root
     }
-    override def close(): Unit = if(root !=null) root.close()
+
+    override def close(): Unit = if (root != null) root.close()
   }
 
   def VectorRootToColumnarBatch: Function[VectorSchemaRoot, ColumnarBatch] = new Function[VectorSchemaRoot, ColumnarBatch] {
@@ -32,9 +33,7 @@ object ColumnarBatchArrowConverter {
       val arrowVectors = root.getFieldVectors.asScala.map(x => new vectorized.ArrowColumnVector(x)).toArray[ColumnVector]
 
       //combine all column vectors in ColumnarBatch
-      val batch = new ColumnarBatch(arrowVectors)
-      batch.setNumRows(root.getRowCount)
-      batch
+      new ColumnarBatch(arrowVectors, root.getRowCount)
     }
   }
 

@@ -1,18 +1,18 @@
 package nl.tudelft.ewi.abs.nonnenmacher.partial.projection
 
 import ArrowFieldDefinitionHelper.nullableInt
+import nl.tudelft.ewi.abs.nonnenmacher.SparkSessionGenerator
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.{ArrowColumnarConversionRule, SparkSession}
+import org.apache.spark.sql.{ArrowColumnarConversionRule, SparkSession, SparkSessionExtensions}
 import org.junit.runner.RunWith
 import org.scalatest.FunSuite
 import org.scalatest.junit.JUnitRunner
 
 
 @RunWith(classOf[JUnitRunner])
-class PartialProjectionOnFpgaSuite extends FunSuite {
+class PartialProjectionOnFpgaSuite extends FunSuite with SparkSessionGenerator{
 
-  test("example addition of three values is executed on cpp code") {
-
+  override def withExtensions: Seq[SparkSessionExtensions => Unit] = {
     //Define FPGAModules
     val in1: In = In(nullableInt("in1"))
     val in2: In = In(nullableInt("in2"))
@@ -20,13 +20,10 @@ class PartialProjectionOnFpgaSuite extends FunSuite {
 
     val sumOfThree = FPGAModule("sumOfThree", query = in1 + in2 + in3, output = nullableInt("out"))
 
-    val spark = SparkSession
-      .builder()
-      .withExtensions(ProjectionOnFPGAExtension(sumOfThree))
-      .withExtensions(_.injectColumnar(_ => ArrowColumnarConversionRule))
-      .appName("Spark SQL basic example")
-      .config("spark.master", "local")
-      .getOrCreate()
+    Seq(ProjectionOnFPGAExtension(sumOfThree), _.injectColumnar(_ => ArrowColumnarConversionRule))
+  }
+
+  test("example addition of three values is executed on cpp code") {
 
     // Deactivates whole stage codegen, helpful for debugging
     // spark.conf.set("spark.sql.codegen.wholeStage", false)
@@ -62,5 +59,7 @@ class PartialProjectionOnFpgaSuite extends FunSuite {
     assert(results.length == 6)
     println("Result: " + results.toSet)
     assert(Set(12, 32, 60, 96, 140, 192).subsetOf(results.toSet))
+
+    spark.close()
   }
 }

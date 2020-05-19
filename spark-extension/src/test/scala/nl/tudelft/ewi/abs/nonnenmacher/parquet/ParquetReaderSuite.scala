@@ -1,16 +1,19 @@
 package nl.tudelft.ewi.abs.nonnenmacher.parquet
 
-import nl.tudelft.ewi.abs.nonnenmacher.GlobalAllocator
+import nl.tudelft.ewi.abs.nonnenmacher.{GlobalAllocator, SparkSessionGenerator}
+import nl.tudelft.ewi.abs.nonnenmacher.gandiva.ProjectionOnGandivaExtension
 import org.apache.spark.sql.execution.datasources.NativeParquetReaderStrategy
 import org.apache.spark.sql.util.ArrowUtils
-import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.{ArrowColumnarExtension, DataFrame, SparkSession, SparkSessionExtensions}
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import org.scalatest.{BeforeAndAfterEach, FunSuite}
 
 
 @RunWith(classOf[JUnitRunner])
-class ParquetReaderSuite extends FunSuite with BeforeAndAfterEach {
+class ParquetReaderSuite extends FunSuite with BeforeAndAfterEach with SparkSessionGenerator{
+
+  override def withExtensions: Seq[SparkSessionExtensions => Unit] = Seq(_.injectPlannerStrategy(x => NativeParquetReaderStrategy))
 
   ignore("creates example parquet file for tests") {
     val spark = SparkSession
@@ -29,13 +32,6 @@ class ParquetReaderSuite extends FunSuite with BeforeAndAfterEach {
   }
 
   test("read from parquet format") {
-
-    val spark = SparkSession
-      .builder()
-      .withExtensions(_.injectPlannerStrategy(x => NativeParquetReaderStrategy))
-      .appName("Spark SQL basic example")
-      .config("spark.master", "local")
-      .getOrCreate()
 
     spark.conf.set("spark.sql.codegen.wholeStage", false)
 

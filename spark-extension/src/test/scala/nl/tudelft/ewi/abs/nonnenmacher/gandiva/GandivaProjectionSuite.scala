@@ -1,26 +1,20 @@
 package nl.tudelft.ewi.abs.nonnenmacher.gandiva
 
-import nl.tudelft.ewi.abs.nonnenmacher.GlobalAllocator
+import nl.tudelft.ewi.abs.nonnenmacher.{GlobalAllocator, SparkSessionGenerator}
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.util.ArrowUtils
-import org.apache.spark.sql.{ArrowColumnarConversionRule, SparkSession}
+import org.apache.spark.sql.{ArrowColumnarConversionRule, ArrowColumnarExtension, SparkSession, SparkSessionExtensions}
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import org.scalatest.{BeforeAndAfterEach, FunSuite}
 
 
 @RunWith(classOf[JUnitRunner])
-class GandivaProjectionSuite extends FunSuite with BeforeAndAfterEach {
+class GandivaProjectionSuite extends FunSuite with BeforeAndAfterEach with SparkSessionGenerator{
 
-  ignore("that a simple addition query can be executed on Gandiva") {
+  override def withExtensions: Seq[SparkSessionExtensions => Unit] = Seq(ProjectionOnGandivaExtension(), ArrowColumnarExtension())
 
-    val spark = SparkSession
-      .builder()
-      .withExtensions(ProjectionOnGandivaExtension())
-      .withExtensions(_.injectColumnar(_ => ArrowColumnarConversionRule))
-      .appName("Spark SQL basic example")
-      .config("spark.master", "local")
-      .getOrCreate()
+  test("that a simple addition query can be executed on Gandiva") {
 
     // Deactivates whole stage codegen, helpful for debugging
     // spark.conf.set("spark.sql.codegen.wholeStage", false)
@@ -39,7 +33,7 @@ class GandivaProjectionSuite extends FunSuite with BeforeAndAfterEach {
       .repartition(2) // Enforces a separate Projection step
     // otherwise Spark optimizes the projection and combines it with the data generation
 
-    val res = df.select((col("a") + col("b") + col("c") * col("d")) * 4)
+    val res = df.select((col("a") + col("b") + col("c") * col("d")) * 4).where(col("a") < 100)
 
     println("Logical Plan:")
     println(res.queryExecution.optimizedPlan)
@@ -50,6 +44,7 @@ class GandivaProjectionSuite extends FunSuite with BeforeAndAfterEach {
 
     // Shows generated code, helpful for debugging
     // println(res.queryExecution.debug.codegen())
+    assert(res.queryExecution.executedPlan.find(_.isInstanceOf[GandivaProjectExec]).isDefined)
 
     //Verify the expected results are correct
     val results: Array[Int] = res.collect().map(_.getInt(0));
@@ -59,14 +54,6 @@ class GandivaProjectionSuite extends FunSuite with BeforeAndAfterEach {
   }
 
   test("that also a processing of multiple batches (1 million rows) works") {
-
-    val spark = SparkSession
-      .builder()
-      .withExtensions(ProjectionOnGandivaExtension())
-      .withExtensions(_.injectColumnar(_ => ArrowColumnarConversionRule))
-      .appName("Spark SQL basic example")
-      .config("spark.master", "local")
-      .getOrCreate()
 
     import spark.implicits._
 
