@@ -31,9 +31,9 @@ class NativeParquetReader(val ptr: Long, val outputSchema: Schema, val numRows: 
     val numRowsRead: Int = readNext(ptr, expander, outputBuffers.addresses, outputBuffers.sizes);
 
     if (numRowsRead < numRows) {
-      _hasNext = false
-      //      root.setRowCount(numRowsRead)
-      close(ptr)
+//      _hasNext = false
+      root.setRowCount(numRowsRead)
+//      close(ptr)
     }
 
     root

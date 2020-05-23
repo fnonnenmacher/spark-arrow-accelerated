@@ -44,12 +44,13 @@ object JNIProcessorFactory {
     new JNIProcessor(ptr, outputSchema);
   }
 
-  def parquetReader(fileName: String, outputSchema: Schema, numRows: Int): NativeParquetReader = {
+  def parquetReader(fileName: String, fileSchema: Schema, outputSchema: Schema, batchSize: Int): NativeParquetReader = {
 
-    val schemaAsBytes = ArrowTypeHelper.arrowSchemaToProtobuf(outputSchema).toByteArray
-    val processId = jni.initNativeParquetReader(fileName, schemaAsBytes, numRows)
+    val inputSchemaBytes = ArrowTypeHelper.arrowSchemaToProtobuf(outputSchema).toByteArray
+    val outputSchemaBytes = ArrowTypeHelper.arrowSchemaToProtobuf(outputSchema).toByteArray
+    val processId = jni.initNativeParquetReader(fileName, inputSchemaBytes, outputSchemaBytes, batchSize)
 
-    new NativeParquetReader(processId, outputSchema, numRows)
+    new NativeParquetReader(processId, outputSchema, batchSize)
   }
 
   private class Initializer {
@@ -60,6 +61,6 @@ object JNIProcessorFactory {
 
     @native def initFletcherProcessor(schema: Array[Byte]): Long
 
-    @native def initNativeParquetReader(fileName: String, schemaAsBytes: Array[Byte], numRows: Int): Long
+    @native def initNativeParquetReader(fileName: String, inputSchemaBytes: Array[Byte], outputSchemaBytes: Array[Byte], numRows: Int): Long
   }
 }

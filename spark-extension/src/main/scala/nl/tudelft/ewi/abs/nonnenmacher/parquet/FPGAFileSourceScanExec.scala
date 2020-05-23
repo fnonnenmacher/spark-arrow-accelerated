@@ -29,6 +29,8 @@ class FPGAFileSourceScanExec(@transient relation: HadoopFsRelation,
 
   override lazy val supportsColumnar: Boolean = true;
 
+  private val dataSchema = relation.dataSchema
+
   protected override def doExecuteColumnar(): RDD[ColumnarBatch] = {
 
     new RDD[ColumnarBatch](relation.sparkSession.sparkContext, Nil) {
@@ -37,11 +39,12 @@ class FPGAFileSourceScanExec(@transient relation: HadoopFsRelation,
 
       override def compute(split: Partition, context: TaskContext): Iterator[ColumnarBatch] = {
 
-        //TODO: currently only 1 file supported!
+        val inputSchema: Schema = ArrowUtils.toArrowSchema(dataSchema, null)
         val schema: Schema = ArrowUtils.toArrowSchema(requiredSchema, null) //TODO read from properties
 
+        //TODO: currently only 1 file supported!
         JNIProcessorFactory
-          .parquetReader(fileName, schema, 100) //TODO read from properties
+          .parquetReader(fileName, inputSchema, schema, 100) //TODO read from properties
           .map(VectorRootToColumnarBatch)
       }
 

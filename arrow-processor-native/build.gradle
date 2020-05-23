@@ -34,6 +34,7 @@ library {
 
             linkTask.get().lib("$localLibPath/libgandiva_jni.dylib")
             linkTask.get().lib("$localLibPath/libprotobuf.dylib")
+            linkTask.get().lib("$localLibPath/libarrow_dataset.dylib")
             linkTask.get().lib("$localLibPath/libarrow.dylib")
             linkTask.get().lib("$localLibPath/libfletcher.dylib")
             linkTask.get().lib("$localLibPath/libfletcher_echo.dylib")
@@ -41,10 +42,10 @@ library {
 
         } else if (isFamily(FAMILY_UNIX)) {
             compileTask.get().includes("${Jvm.current().javaHome}/include/linux")
-//            compileTask.get().includes("/arrow/cpp/release/src/gandiva/jni/")
 
             linkTask.get().lib("$localLibPath/libgandiva_jni.so")
             linkTask.get().lib("$localLibPath/libprotobuf.so")
+            linkTask.get().lib("$localLibPath/libarrow_dataset.so")
             linkTask.get().lib("$localLibPath/libarrow.so")
             linkTask.get().lib("$localLibPath/libfletcher.so")
             linkTask.get().lib("$localLibPath/libfletcher_echo.so")

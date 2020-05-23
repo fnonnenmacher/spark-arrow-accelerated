@@ -23,14 +23,15 @@ class NativeParquetReaderSuite extends FunSuite {
     val in2: Field = Field.nullable("long-field", MinorType.BIGINT.getType)
     val in3: Field = Field.nullable("string-field", MinorType.VARCHAR.getType)
 
-    val schema = new Schema(List(in1, in2, in3).asJava)
+    val inputSchema = new Schema(List(in1, in2, in3).asJava)
+    val outputSchema = new Schema(List(in1, in2).asJava)
 
-    val reader = JNIProcessorFactory.parquetReader("data/big-example.parquet", schema, 1000)
+    val reader = JNIProcessorFactory.parquetReader("data/big-example.parquet", inputSchema, outputSchema, 2000)
 
     val root = reader.next()
 
     println(root.getRowCount)
-    val resVec1 = root.getVector(2).asInstanceOf[VarCharVector]
-    println(">"+resVec1.getObject(999).toString);
+    val resVec1 = root.getVector(1).asInstanceOf[BigIntVector]
+    println(">"+resVec1.get(999));
   }
 }
