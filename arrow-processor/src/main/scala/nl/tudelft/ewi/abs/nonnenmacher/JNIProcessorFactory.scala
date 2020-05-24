@@ -11,6 +11,7 @@ object JNIProcessorFactory {
     System.loadLibrary("protobuf")
     System.loadLibrary("arrow")
     System.loadLibrary("parquet")
+    System.loadLibrary("arrow_dataset")
     System.loadLibrary("fletcher_echo")
     System.loadLibrary("fletcher")
     System.loadLibrary("arrow-processor-native")
