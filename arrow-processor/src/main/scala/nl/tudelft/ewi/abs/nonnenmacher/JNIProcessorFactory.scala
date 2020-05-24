@@ -18,6 +18,10 @@ object JNIProcessorFactory {
     new Initializer();
   }
 
+  def loadJNI(): Unit ={
+    jni
+  }
+
   def copyProcessor(schema: Schema): JNIProcessor = {
 
     val schemaAsBytes = ArrowTypeHelper.arrowSchemaToProtobuf(schema).toByteArray
@@ -44,15 +48,6 @@ object JNIProcessorFactory {
     new JNIProcessor(ptr, outputSchema);
   }
 
-  def parquetReader(fileName: String, fileSchema: Schema, outputSchema: Schema, batchSize: Int): NativeParquetReader = {
-
-    val inputSchemaBytes = ArrowTypeHelper.arrowSchemaToProtobuf(outputSchema).toByteArray
-    val outputSchemaBytes = ArrowTypeHelper.arrowSchemaToProtobuf(outputSchema).toByteArray
-    val processId = jni.initNativeParquetReader(fileName, inputSchemaBytes, outputSchemaBytes, batchSize)
-
-    new NativeParquetReader(processId, outputSchema, batchSize)
-  }
-
   private class Initializer {
 
     @native def initThreeIntAddingProcessor(schema: Array[Byte]): Long
@@ -60,7 +55,5 @@ object JNIProcessorFactory {
     @native def initCopyProcessor(schema: Array[Byte]): Long;
 
     @native def initFletcherProcessor(schema: Array[Byte]): Long
-
-    @native def initNativeParquetReader(fileName: String, inputSchemaBytes: Array[Byte], outputSchemaBytes: Array[Byte], numRows: Int): Long
   }
 }

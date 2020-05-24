@@ -1,14 +1,15 @@
 package org.apache.spark.sql.execution.datasources
 
-import nl.tudelft.ewi.abs.nonnenmacher.parquet.FPGAFileSourceScanExec
+import nl.tudelft.ewi.abs.nonnenmacher.gandiva.{GandivaFilterExec, GandivaProjectExec}
+import nl.tudelft.ewi.abs.nonnenmacher.parquet.NativeParquetSourceScanExec
 import org.apache.spark.internal.Logging
-import org.apache.spark.sql.{Strategy, execution}
 import org.apache.spark.sql.catalyst.catalog.BucketSpec
 import org.apache.spark.sql.catalyst.expressions
 import org.apache.spark.sql.catalyst.expressions.{Attribute, AttributeSet, EmptyRow, Expression, ExpressionSet, Literal, NamedExpression, SubqueryExpression}
 import org.apache.spark.sql.catalyst.planning.ScanOperation
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
 import org.apache.spark.sql.execution._
+import org.apache.spark.sql.{Strategy, execution}
 import org.apache.spark.util.collection.BitSet
 
 /**
@@ -16,7 +17,7 @@ import org.apache.spark.util.collection.BitSet
  * inject my own FileSourceScanExec.
  * For the future I want to understand which optimizations are applied here and which of them are relevant for me.
  */
-object NativeParquetReaderStrategy extends Strategy with Logging {
+case class NativeParquetReaderStrategy(val gandivaEnebaled: Boolean = false) extends Strategy with Logging {
 
   // should prune buckets iff num buckets is greater than 1 and there is only one bucket column
   private def shouldPruneBuckets(bucketSpec: Option[BucketSpec]): Boolean = {
@@ -164,7 +165,7 @@ object NativeParquetReaderStrategy extends Strategy with Logging {
       val outputAttributes = readDataColumns ++ partitionColumns
 
       val scan =
-        new FPGAFileSourceScanExec(
+        new NativeParquetSourceScanExec(
           fsRelation,
           outputAttributes,
           outputSchema,
@@ -174,11 +175,19 @@ object NativeParquetReaderStrategy extends Strategy with Logging {
           table.map(_.identifier))
 
       val afterScanFilter = afterScanFilters.toSeq.reduceOption(expressions.And)
-      val withFilter = afterScanFilter.map(execution.FilterExec(_, scan)).getOrElse(scan)
+      val withFilter = if (gandivaEnebaled) {
+        afterScanFilter.map(GandivaFilterExec(_, scan)).getOrElse(scan)
+      } else {
+        afterScanFilter.map(execution.FilterExec(_, scan)).getOrElse(scan)
+      }
       val withProjections = if (projects == withFilter.output) {
         withFilter
       } else {
-        execution.ProjectExec(projects, withFilter)
+        if (gandivaEnebaled) {
+          GandivaProjectExec(projects, withFilter)
+        } else {
+          execution.ProjectExec(projects, withFilter)
+        }
       }
 
       withProjections :: Nil

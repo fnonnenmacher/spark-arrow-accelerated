@@ -5,9 +5,7 @@
 
 #include <jni.h>
 #include "JavaResizableBuffer.h"
-#include "Assertions.h"
-
-#include <iostream>
+#include "JavaMemoryPool.h"
 
 static jint JNI_VERSION = JNI_VERSION_1_6;
 
@@ -19,6 +17,7 @@ jint JNI_OnLoad(JavaVM* vm, void* reserved) {
 
     // Call internal JNI loaders
     JNI_OnLoad_JavaResizableBuffer(env, reserved);
+    JNI_OnLoad_JavaMemoryPool(env, reserved);
 
     return JNI_VERSION;
 }
@@ -29,4 +28,5 @@ void JNI_OnUnload(JavaVM* vm, void* reserved) {
 
     // Call internal JNI unloaders
     JNI_OnUnload_JavaResizableBuffer(env, reserved);
+    JNI_OnUnload_JavaMemoryPool(env, reserved);
 }

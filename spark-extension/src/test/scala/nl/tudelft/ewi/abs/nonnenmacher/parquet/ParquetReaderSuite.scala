@@ -13,7 +13,7 @@ import org.scalatest.{BeforeAndAfterEach, FunSuite}
 @RunWith(classOf[JUnitRunner])
 class ParquetReaderSuite extends FunSuite with BeforeAndAfterEach with SparkSessionGenerator{
 
-  override def withExtensions: Seq[SparkSessionExtensions => Unit] = Seq(_.injectPlannerStrategy(x => NativeParquetReaderStrategy))
+  override def withExtensions: Seq[SparkSessionExtensions => Unit] = Seq(_.injectPlannerStrategy(x => NativeParquetReaderStrategy()), ArrowColumnarExtension())
 
   ignore("creates example parquet file for tests") {
     val spark = SparkSession
@@ -35,8 +35,7 @@ class ParquetReaderSuite extends FunSuite with BeforeAndAfterEach with SparkSess
 
     spark.conf.set("spark.sql.codegen.wholeStage", false)
 
-    //TODO reading ``string-field doe not yet work!!!
-    val sqlDF: DataFrame = spark.sql("SELECT `int-field` FROM parquet.`example.parquet` WHERE `long-field`>2 OR `long-field` < 0")
+    val sqlDF: DataFrame = spark.sql("SELECT `string-field` FROM parquet.`example.parquet` WHERE `long-field`>2 OR `long-field` < 0")
 
     sqlDF.printSchema()
     println("Direct Plan:")
@@ -52,7 +51,6 @@ class ParquetReaderSuite extends FunSuite with BeforeAndAfterEach with SparkSess
     sqlDF.foreach(println(_))
   }
 
-  // Close and delete the temp file
   override def afterEach() {
     //Check that all previously allocated memory is released
     assert(ArrowUtils.rootAllocator.getAllocatedMemory == 0)

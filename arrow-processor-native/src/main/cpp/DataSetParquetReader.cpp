@@ -3,32 +3,28 @@
 //
 
 #include "nl_tudelft_ewi_abs_nonnenmacher_NativeParquetReader.h"
-#include "nl_tudelft_ewi_abs_nonnenmacher_JNIProcessorFactory_Initializer.h"
 #include "DataSetParquetReader.h"
-#include "jni/Assertions.h"
+
 #include "utils.h"
+#include "jni/Assertions.h"
 #include "jni/ProtobufSchemaDeserializer.h"
 #include "jni/Converters.h"
+#include "jni/JavaMemoryPool.h"
 
+#include "arrow/api.h"
 #include <arrow/dataset/api.h>
-#include "arrow/dataset/file_base.h"
 #include <arrow/filesystem/api.h>
-
-#include "arrow/type.h"
-#include "arrow/util/iterator.h"
-
-#include "arrow/dataset/filter.h"
 
 using namespace arrow::dataset;
 
-DataSetParquetReader::DataSetParquetReader(const std::string &file_name,
+DataSetParquetReader::DataSetParquetReader(const std::shared_ptr<arrow::MemoryPool> &memory_pool,
+                                           const std::string &file_name,
                                            const std::shared_ptr<arrow::Schema> &schema_file,
                                            const std::shared_ptr<arrow::Schema> &schema_out,
                                            int num_rows) {
-    // output schema
-    this->_schema = schema_out;
+    pool_ = memory_pool;
 
-    // file path TODO: Support list of files
+    // TODO: Support list of files
     std::shared_ptr<arrow::fs::LocalFileSystem> localfs = std::make_shared<arrow::fs::LocalFileSystem>();
     FileSource source(file_name, localfs.get());
 
@@ -44,9 +40,12 @@ DataSetParquetReader::DataSetParquetReader(const std::string &file_name,
                                                       localfs,
                                                       {file_info}).ValueOrDie();
 
+    std::shared_ptr<ScanContext> ctx_ = std::make_shared<ScanContext>();
+    ctx_->pool = memory_pool.get();
+
     // Build & configure scanner
-    std::shared_ptr<arrow::dataset::ScannerBuilder> scanner_builder = dataset->NewScan().ValueOrDie();
-//    ASSERT_OK(scanner_builder->Filter( ("int-field"_ < 1000).Copy()) ); //TODO send filters from spark
+    std::shared_ptr<arrow::dataset::ScannerBuilder> scanner_builder = dataset->NewScan(ctx_).ValueOrDie();
+//    ASSERT_OK(scanner_builder->Filter( ("int-field"_ < 1000).Copy()) ); //TODO send predicate push-down filters from scala
     ASSERT_OK(scanner_builder->Project(schema_out->field_names()));
     ASSERT_OK(scanner_builder->BatchSize(num_rows));
 
@@ -63,6 +62,7 @@ DataSetParquetReader::DataSetParquetReader(const std::string &file_name,
     recordBatchIter = std::make_shared<arrow::RecordBatchIterator>(
             scan_task_it->Next().ValueOrDie()->Execute().ValueOrDie());
 
+    //TODO: Semantics of ScanTask - Can there be multiple?
 
 //    if (scan_task_it.Next().ok()) {
 //        std::cout <<"There are more task iterators available" << std::endl;
@@ -70,13 +70,14 @@ DataSetParquetReader::DataSetParquetReader(const std::string &file_name,
 }
 
 std::shared_ptr<arrow::RecordBatch> DataSetParquetReader::ReadNext() {
-    return recordBatchIter->Next().ValueOrDie(); //TODO detect end
+    batch = recordBatchIter->Next().ValueOrDie();
+    return batch;
 }
 
 
-JNIEXPORT jlong JNICALL
-Java_nl_tudelft_ewi_abs_nonnenmacher_JNIProcessorFactory_00024Initializer_initNativeParquetReader
-        (JNIEnv *env, jobject, jstring java_file_name, jbyteArray schema_file_jarr, jbyteArray schema_out_jarr,
+JNIEXPORT jlong JNICALL Java_nl_tudelft_ewi_abs_nonnenmacher_NativeParquetReader_initNativeParquetReader
+        (JNIEnv *env, jobject, jobject jmemorypool, jstring java_file_name, jbyteArray schema_file_jarr,
+         jbyteArray schema_out_jarr,
          jint num_rows) {
 
     std::string file_name = get_java_string(env, java_file_name);
@@ -89,30 +90,66 @@ Java_nl_tudelft_ewi_abs_nonnenmacher_JNIProcessorFactory_00024Initializer_initNa
     jbyte *schema_out_bytes = env->GetByteArrayElements(schema_out_jarr, 0);
     std::shared_ptr<arrow::Schema> schema_out = ReadSchemaFromProtobufBytes(schema_out_bytes, schema_out_len);
 
-    return (jlong) new DataSetParquetReader(file_name, schema_file, schema_out, (int) num_rows);
+    std::shared_ptr<arrow::MemoryPool> pool = std::make_shared<JavaMemoryPool>(env, jmemorypool);
+    return (jlong) new DataSetParquetReader(pool, file_name, schema_file, schema_out, (int) num_rows);
 }
 
-JNIEXPORT jint JNICALL Java_nl_tudelft_ewi_abs_nonnenmacher_NativeParquetReader_readNext
-        (JNIEnv *env, jobject, jlong process_ptr, jobject jexpander, jlongArray buf_addrs, jlongArray buf_sizes) {
+JNIEXPORT jboolean JNICALL Java_nl_tudelft_ewi_abs_nonnenmacher_NativeParquetReader_readNext
+        (JNIEnv *env, jobject, jlong process_ptr, jlongArray jarr_vector_lengths, jlongArray jarr_vector_null_counts,
+         jlongArray jarr_buf_addrs) {
 
-    // Read next record batch from parquete file
+
     DataSetParquetReader *datasetParquetReader = (DataSetParquetReader *) process_ptr;
+
+    // Read next record batch from parquet file
     std::shared_ptr<arrow::RecordBatch> out_batch = datasetParquetReader->ReadNext();
 
-    // Convert java arrays
-    int out_bufs_len = env->GetArrayLength(buf_addrs);
-    if (out_bufs_len != env->GetArrayLength(buf_sizes)) {
-        std::cout << "mismatch in arraylen of buf_addrs and buf_sizes";
-        return -1;
+    // check if end reached
+    std::shared_ptr<arrow::RecordBatch> end = arrow::IterationTraits<std::shared_ptr<arrow::RecordBatch>>::End();
+    if (end == out_batch) {
+        return false;
     }
 
-    jlong *out_buf_addrs = env->GetLongArrayElements(buf_addrs, 0);
-    jlong *out_buf_sizes = env->GetLongArrayElements(buf_sizes, 0);
+    // Read buffers, field vector length & nullcount from RecordBatch
+    const std::shared_ptr<arrow::Schema> &schema = out_batch->schema();
+    auto num_fields = schema->num_fields();
 
-    //Copy imported recordbatch in buffers allocated from java
-    ASSERT_OK(copy_record_batch_ito_buffers(env, jexpander, out_batch, out_buf_addrs, out_buf_sizes, out_bufs_len));
+    jlong buffer_addresses[num_fields * 3];
+    jlong vector_lengths[num_fields];
+    jlong vector_null_counts[num_fields];
 
-    return out_batch->num_rows();
+    for (int i = 0; i < num_fields; i++) {
+        const std::shared_ptr<arrow::Field> &field = schema->field(i);
+        const std::shared_ptr<arrow::Array> &column = out_batch->column(i);
+        const std::shared_ptr<arrow::ArrayData> &data = column->data();
+
+        vector_lengths[i] = column->length();
+        vector_null_counts[i] = column->null_count();
+
+        const std::shared_ptr<arrow::Buffer> &validity_buffer = data->buffers[0];
+        if (validity_buffer != nullptr) {
+            buffer_addresses[3 * i + 0] = validity_buffer->address();
+        } else {
+            buffer_addresses[3 * i + 0] = 0;
+        }
+
+        const std::shared_ptr<arrow::Buffer> &value_buffer = data->buffers[1];
+        buffer_addresses[3 * i + 1] = value_buffer->address();
+
+        if (arrow::is_binary_like(field->type()->id())) {
+            const std::shared_ptr<arrow::Buffer> &offset_buffer = data->buffers[2];
+            buffer_addresses[3 * i + 2] = offset_buffer->address();
+        } else {
+            buffer_addresses[3 * i + 2] = 0;
+        }
+    }
+
+    //Copy data into Java arrays
+    env->SetLongArrayRegion(jarr_vector_lengths, 0, num_fields, vector_lengths);
+    env->SetLongArrayRegion(jarr_vector_null_counts, 0, num_fields, vector_null_counts);
+    env->SetLongArrayRegion(jarr_buf_addrs, 0, num_fields * 3, buffer_addresses);
+
+    return true;
 }
 
 JNIEXPORT void JNICALL Java_nl_tudelft_ewi_abs_nonnenmacher_NativeParquetReader_close

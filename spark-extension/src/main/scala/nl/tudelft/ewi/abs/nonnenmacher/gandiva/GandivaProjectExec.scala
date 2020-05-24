@@ -4,6 +4,7 @@ import nl.tudelft.ewi.abs.nonnenmacher.utils.AutoCloseProcessingHelper._
 import nl.tudelft.ewi.abs.nonnenmacher.utils.ClosableFunction
 import org.apache.arrow.gandiva.evaluator.Projector
 import org.apache.arrow.gandiva.expression.TreeBuilder
+import org.apache.arrow.gandiva.ipc.GandivaTypes.SelectionVectorType
 import org.apache.arrow.memory.BufferAllocator
 import org.apache.arrow.vector.types.pojo.Field
 import org.apache.arrow.vector.{ValueVector, VectorSchemaRoot, VectorUnloader}
@@ -18,13 +19,11 @@ import org.apache.spark.sql.vectorized.ColumnarBatch
 
 import scala.collection.JavaConverters._
 
-case class GandivaProjectExec(child: SparkPlan, projectionList: Seq[NamedExpression]) extends UnaryExecNode {
+case class GandivaProjectExec(projectList: Seq[NamedExpression], child: SparkPlan) extends UnaryExecNode {
 
   override def supportsColumnar: Boolean = true
 
-  lazy val outputs: Seq[Attribute] = {
-    projectionList.map(expr => AttributeReference(expr.name, expr.dataType)())
-  }
+  lazy val outputs: Seq[Attribute] =projectList.map(_.toAttribute)
 
   override protected def doExecute(): RDD[InternalRow] = {
     throw new IllegalAccessException(s"${getClass.getSimpleName} does only support columnar data processing.")
@@ -47,10 +46,11 @@ case class GandivaProjectExec(child: SparkPlan, projectionList: Seq[NamedExpress
 
   private class GandivaProjection extends ClosableFunction[ColumnarBatchWithSelectionVector, ColumnarBatchWithSelectionVector] {
 
+    private val selectionVectorType = if (child.isInstanceOf[GandivaFilterExec]) SelectionVectorType.SV_INT16 else SelectionVectorType.SV_NONE
     private val allocator: BufferAllocator = ArrowUtils.rootAllocator.newChildAllocator(s"${this.getClass.getSimpleName}", 0, Long.MaxValue)
-    private val treeNodes = projectionList.map(GandivaExpressionConverter.transform)
+    private val treeNodes = projectList.map(GandivaExpressionConverter.transform)
     private val expressionTrees = treeNodes.zip(outputs).map { case (node, attr) => TreeBuilder.makeExpression(node, toField(attr)) }
-    private val gandivaProjector: Projector = Projector.make(ArrowUtils.toArrowSchema(child.schema, conf.sessionLocalTimeZone), expressionTrees.asJava)
+    private val gandivaProjector: Projector = Projector.make(ArrowUtils.toArrowSchema(child.schema, conf.sessionLocalTimeZone), expressionTrees.asJava, selectionVectorType)
     private val rootOut = VectorSchemaRoot.create(ArrowUtils.toArrowSchema(schema, conf.sessionLocalTimeZone), allocator)
 
     override def apply(batchIn: ColumnarBatchWithSelectionVector): ColumnarBatchWithSelectionVector = {
@@ -66,7 +66,6 @@ case class GandivaProjectExec(child: SparkPlan, projectionList: Seq[NamedExpress
       }else {
         gandivaProjector.evaluate(batchIn.fieldVectorRows, buffers,  batchIn.selectionVector, vectors.asJava)
       }
-
 
       new ColumnarBatchWithSelectionVector(rootOut.getFieldVectors.asScala, batchIn.getRecordCount.toInt, null)
     }

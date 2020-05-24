@@ -30,8 +30,8 @@ abstract class Vector[T, S <: FieldVector](val name: String, val values: Seq[T])
   def toArrowVector: S = {
     val vector: S = initVector(name);
 
-    vector match {
-      case fixedWidth: BaseFixedWidthVector => fixedWidth.allocateNew(values.size)
+    if (vector.isInstanceOf[BaseFixedWidthVector]){
+      vector.asInstanceOf[BaseFixedWidthVector].allocateNew(values.size)
     }
 
     // Fill apache arrow data structure

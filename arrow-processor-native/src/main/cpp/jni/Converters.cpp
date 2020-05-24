@@ -142,8 +142,8 @@ Status copy_record_batch_ito_buffers(JNIEnv *env, jobject jexpander,
 
         // copy value buffer
         auto value_buffer = column->data()->buffers[1];
-        std::cout << "ValueBuffer: "  << value_buffer->size() << std::endl;
-        std::cout << "Out Buffer: "  << out_buf_sizes[buf_idx] << std::endl;
+        // std::cout << "ValueBuffer: "  << value_buffer->size() << std::endl;
+        // std::cout << "Out Buffer: "  << out_buf_sizes[buf_idx] << std::endl;
 
         ASSERT(value_buffer->size() <= out_buf_sizes[buf_idx],
                "Value buffer of field '" + field->name() +

@@ -17,7 +17,7 @@ jobs:
     - name: Runs the gradle tests in container fnonnenmacher/arrow-plasma-java
       run: |
         docker run \
-        -v ${{ github.workspace }}:/app fnonnenmacher/arrow-plasma-java:0.5 \
+        -v ${{ github.workspace }}:/app fnonnenmacher/arrow-plasma-java:0.6 \
         /bin/bash -c "./gradlew build"
     - name: Archive test reports of arrow-processor
       if: ${{ failure() }}

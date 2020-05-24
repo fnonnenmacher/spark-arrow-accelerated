@@ -16,7 +16,7 @@ import org.apache.spark.sql.{ArrowColumnVectorWithFieldVector, ColumnarBatchWith
 
 import scala.collection.JavaConverters._
 
-case class GandivaFilterExec(child: SparkPlan, filterExpression: Expression) extends UnaryExecNode {
+case class GandivaFilterExec(filterExpression: Expression, child: SparkPlan) extends UnaryExecNode {
 
   override def supportsColumnar: Boolean = true
 
@@ -53,12 +53,13 @@ case class GandivaFilterExec(child: SparkPlan, filterExpression: Expression) ext
     }
 
     def newSelectionVector(numRows: Int): SelectionVector = {
-      if (numRows > 65536) { //more than 2 bytes to store one index
-        val selectionBuffer = allocator.buffer(numRows * 4)
-        new SelectionVectorInt32(selectionBuffer) //INT 32 -> 4 Bytes per index => Max 2^32 rows
-      } else {
+      if (numRows <= 65536) { //more than 2 bytes to store one index
         val selectionBuffer = allocator.buffer(numRows * 2)
         new SelectionVectorInt16(selectionBuffer) //INT 16 -> 2 Bytes per index => Max 2^16 rows
+      } else {
+          throw new IllegalAccessException("batch size > 65536 currently not supported")
+//        val selectionBuffer = allocator.buffer(numRows * 4)
+//        new SelectionVectorInt32(selectionBuffer) //INT 32 -> 4 Bytes per index => Max 2^32 rows
       }
     }
 
