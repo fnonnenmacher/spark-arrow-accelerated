@@ -38,13 +38,15 @@ RUN wget -q http://apache.40b.nl/arrow/arrow-0.17.0/apache-arrow-0.17.0.tar.gz &
         tar -xzf apache-arrow-0.17.0.tar.gz --strip-components 1 -C /arrow &&\
         rm -f apache-arrow-0.17.0.tar.gz
 
-# Build and install apache arrow with plasma server & plasma jni lib
+# Build and install apache arrow
 RUN mkdir /arrow/cpp/release &&\
         cd /arrow/cpp/release &&\
-        cmake -DARROW_PARQUET=ON -DARROW_GANDIVA=ON -DARROW_GANDIVA_JAVA=ON .. &&\
+        cmake -DARROW_PARQUET=ON -DARROW_GANDIVA=ON -DARROW_GANDIVA_JAVA=ON -DARROW_DATASET=ON .. &&\
         make &&\
-        make install &&\
-        cd /arrow/java &&\
+        make install
+
+# Build gandiva jar file
+RUN cd /arrow/java &&\
         mvn clean install -P arrow-jni -am -DskipTests -Darrow.cpp.build.dir=../../cpp/release/release
 
 # Download Fletcher
