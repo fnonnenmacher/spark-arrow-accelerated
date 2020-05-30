@@ -13,7 +13,7 @@ import org.apache.spark.sql.{Strategy, execution}
 import org.apache.spark.util.collection.BitSet
 
 /**
- * For now copied without real changes from {@link org.apache.spark.sql.execution.datasources.FileSourceStrategy} to
+ * For now copied without real changes from [@link org.apache.spark.sql.execution.datasources.FileSourceStrategy] to
  * inject my own FileSourceScanExec.
  * For the future I want to understand which optimizations are applied here and which of them are relevant for me.
  */

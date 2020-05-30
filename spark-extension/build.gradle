@@ -40,6 +40,9 @@ test {
 jmh {
     duplicateClassesStrategy = DuplicatesStrategy.EXCLUDE
     zip64 = true //https://github.com/melix/jmh-gradle-plugin/issues/159#issuecomment-623278956
+    jvmArgs = ["-Djava.library.path=${libraryPaths.join(':')}".toString(), "-Dproject.root=${project.rootDir}".toString()]
+    humanOutputFile = project.file("${project.buildDir}/reports/jmh/details.txt")
+    humanOutputFile = project.file("${project.buildDir}/reports/jmh/details.txt")
 }
 jmhJar {
     zip64 = true //https://github.com/melix/jmh-gradle-plugin/issues/159#issuecomment-623278956

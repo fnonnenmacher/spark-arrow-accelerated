@@ -33,9 +33,9 @@ class ParquetReaderSuite extends FunSuite with BeforeAndAfterEach with SparkSess
 
   test("read from parquet format") {
 
-    spark.conf.set("spark.sql.codegen.wholeStage", false)
+//    spark.conf.set("spark.sql.codegen.wholeStage", false)
 
-    val sqlDF: DataFrame = spark.sql("SELECT `string-field` FROM parquet.`example.parquet` WHERE `long-field`>2 OR `long-field` < 0")
+    val sqlDF: DataFrame = spark.sql("SELECT `string-field` FROM parquet.`../data/big-example.parquet` WHERE `long-field`>2 OR `long-field` < 0")
 
     sqlDF.printSchema()
     println("Direct Plan:")
@@ -47,8 +47,8 @@ class ParquetReaderSuite extends FunSuite with BeforeAndAfterEach with SparkSess
     println("Executed Plan:")
     println(sqlDF.queryExecution.executedPlan)
 
-    println(sqlDF.columns.mkString(", "))
-    sqlDF.foreach(println(_))
+//    println(sqlDF.columns.mkString(", "))
+    println(sqlDF.count())
   }
 
   override def afterEach() {

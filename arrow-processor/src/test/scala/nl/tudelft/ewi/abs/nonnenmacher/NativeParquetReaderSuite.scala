@@ -1,8 +1,8 @@
 package nl.tudelft.ewi.abs.nonnenmacher
 
-import org.apache.arrow.vector.{BigIntVector, IntVector, VarCharVector}
 import org.apache.arrow.vector.types.Types.MinorType
 import org.apache.arrow.vector.types.pojo.{Field, Schema}
+import org.apache.arrow.vector.{BigIntVector, IntVector, VarCharVector}
 import org.junit.runner.RunWith
 import org.scalatest.FunSuite
 import org.scalatest.junit.JUnitRunner
@@ -12,7 +12,7 @@ import scala.collection.JavaConverters._
 @RunWith(classOf[JUnitRunner])
 class NativeParquetReaderSuite extends FunSuite {
 
-  val fileName = "data/big-example.parquet"
+  val fileName = "../data/big-example.parquet"
 
   val intField: Field = Field.nullable("int-field", MinorType.INT.getType)
   val longField: Field = Field.nullable("long-field", MinorType.BIGINT.getType)
@@ -36,6 +36,9 @@ class NativeParquetReaderSuite extends FunSuite {
 
     assert(root.getVector(stringField.getName).isInstanceOf[VarCharVector])
     assert(root.getVector(stringField.getName).asInstanceOf[VarCharVector].getObject(10).toString == "number-10") //value in parquet file is "number-$index"
+
+    reader.close()
+    assert(GlobalAllocator.getAllocatedMemory() == 0)
   }
 
   test("that reading can be limited to subset of fields") {
@@ -49,6 +52,9 @@ class NativeParquetReaderSuite extends FunSuite {
     assert(root.getVector(longField.getName).isInstanceOf[BigIntVector])
     assert(root.getVector(intField.getName) == null)
     assert(root.getVector(stringField.getName) == null)
+
+    reader.close()
+    assert(GlobalAllocator.getAllocatedMemory() == 0)
   }
 
   test("that the whole iterator can be processed") {
@@ -63,6 +69,8 @@ class NativeParquetReaderSuite extends FunSuite {
     // parquet contains in total 1 million elements
     assert(allIntsCombined.size == 1000000)
     assert(allIntsCombined(999999) == 999999)
+
+    assert(GlobalAllocator.getAllocatedMemory() == 0)
   }
 
   private def schema(fields: Field*): Schema = {

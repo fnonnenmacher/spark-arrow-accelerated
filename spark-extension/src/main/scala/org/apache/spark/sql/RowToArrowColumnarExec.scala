@@ -1,11 +1,13 @@
 package org.apache.spark.sql
 
+import nl.tudelft.ewi.abs.nonnenmacher.utils.StartStopMeasurment
 import org.apache.arrow.vector.VectorSchemaRoot
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.UnsafeProjection
 import org.apache.spark.sql.catalyst.rules.Rule
 import org.apache.spark.sql.execution.arrow.ArrowWriter
+import org.apache.spark.sql.execution.metric.{SQLMetric, SQLMetrics}
 import org.apache.spark.sql.execution.{ColumnarRule, ColumnarToRowExec, RowToColumnarExec, SparkPlan}
 import org.apache.spark.sql.util.ArrowUtils
 import org.apache.spark.sql.vectorized.ColumnarBatch
@@ -96,26 +98,30 @@ class RowToArrowColumnarExec(override val child: SparkPlan) extends RowToColumna
   override def hashCode(): Int = super.hashCode()
 }
 
-class ArrowColumnarToRowExec(override val child: SparkPlan) extends ColumnarToRowExec(child) {
+class ArrowColumnarToRowExec(override val child: SparkPlan) extends ColumnarToRowExec(child) with StartStopMeasurment{
 
   override def supportCodegen: Boolean = false
 
   override def doExecute(): RDD[InternalRow] = {
     val numOutputRows = longMetric("numOutputRows")
     val numInputBatches = longMetric("numInputBatches")
+    val conversionTime = longMetric("conversionTime")
     // This avoids calling `output` in the RDD closure, so that we don't need to include the entire
     // plan (this) in the closure.
     val localOutput = this.output
     child.executeColumnar().mapPartitionsInternal { batches =>
       val toUnsafe = UnsafeProjection.create(localOutput, localOutput)
       batches.flatMap { batch =>
+        start()
         numInputBatches += 1
         val colBatch = ColumnarBatchWithSelectionVector.from(batch)
 
         numOutputRows += colBatch.getRecordCount
 
-        colBatch.rowIterator
+        val res = colBatch.rowIterator
           .map(toUnsafe)
+        conversionTime += stop()
+        res
       }
     }
   }
@@ -130,6 +136,12 @@ class ArrowColumnarToRowExec(override val child: SparkPlan) extends ColumnarToRo
     }
     other.isInstanceOf[ArrowColumnarToRowExec]
   }
+
+  override lazy val metrics: Map[String, SQLMetric] = Map(
+    "numOutputRows" -> SQLMetrics.createMetric(sparkContext, "number of output rows"),
+    "numInputBatches" -> SQLMetrics.createMetric(sparkContext, "number of input batches"),
+    "conversionTime" -> SQLMetrics.createNanoTimingMetric(sparkContext, "time converting in [ns]")
+  )
 
   override def hashCode(): Int = super.hashCode()
 }

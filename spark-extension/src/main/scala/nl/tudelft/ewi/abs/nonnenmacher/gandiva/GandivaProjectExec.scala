@@ -1,7 +1,7 @@
 package nl.tudelft.ewi.abs.nonnenmacher.gandiva
 
 import nl.tudelft.ewi.abs.nonnenmacher.utils.AutoCloseProcessingHelper._
-import nl.tudelft.ewi.abs.nonnenmacher.utils.ClosableFunction
+import nl.tudelft.ewi.abs.nonnenmacher.utils.{ClosableFunction, StartStopMeasurment}
 import org.apache.arrow.gandiva.evaluator.Projector
 import org.apache.arrow.gandiva.expression.TreeBuilder
 import org.apache.arrow.gandiva.ipc.GandivaTypes.SelectionVectorType
@@ -13,6 +13,7 @@ import org.apache.spark.sql.ColumnarBatchArrowConverter.{ColumnarBatchToVectorRo
 import org.apache.spark.sql.ColumnarBatchWithSelectionVector
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.{Attribute, AttributeReference, NamedExpression}
+import org.apache.spark.sql.execution.metric.SQLMetrics
 import org.apache.spark.sql.execution.{SparkPlan, UnaryExecNode}
 import org.apache.spark.sql.util.ArrowUtils
 import org.apache.spark.sql.vectorized.ColumnarBatch
@@ -35,12 +36,18 @@ case class GandivaProjectExec(projectList: Seq[NamedExpression], child: SparkPla
 
   override protected def doExecuteColumnar(): RDD[ColumnarBatch] = {
 
+    val time = longMetric("time")
+
     child.executeColumnar().mapPartitions { batchIter =>
 
+      var start:Long =0
+
       batchIter
+        .map{ x => start = System.nanoTime(); x}
         .map(ColumnarBatchWithSelectionVector.from)
         .mapAndAutoClose(new GandivaProjection)
         .map(_.toColumnarBatch)
+       .map{ x => time += System.nanoTime()-start; x}
     }
   }
 
@@ -62,11 +69,10 @@ case class GandivaProjectExec(projectList: Seq[NamedExpression], child: SparkPla
       val vectors = rootOut.getFieldVectors.asScala.map(_.asInstanceOf[ValueVector])
 
       if (batchIn.selectionVector == null){
-        gandivaProjector.evaluate(batchIn.fieldVectorRows, buffers,  vectors.asJava)
+        gandivaProjector.evaluate(batchIn.fieldVectorRows, buffers, vectors.asJava)
       }else {
-        gandivaProjector.evaluate(batchIn.fieldVectorRows, buffers,  batchIn.selectionVector, vectors.asJava)
+        gandivaProjector.evaluate(batchIn.fieldVectorRows, buffers, batchIn.selectionVector, vectors.asJava)
       }
-
       new ColumnarBatchWithSelectionVector(rootOut.getFieldVectors.asScala, batchIn.getRecordCount.toInt, null)
     }
 
@@ -78,5 +84,8 @@ case class GandivaProjectExec(projectList: Seq[NamedExpression], child: SparkPla
   }
 
   override def output: Seq[Attribute] = outputs
+
+  override lazy val metrics = Map( "time" -> SQLMetrics.createNanoTimingMetric(sparkContext, "time in [ns]"))
+
 }
 

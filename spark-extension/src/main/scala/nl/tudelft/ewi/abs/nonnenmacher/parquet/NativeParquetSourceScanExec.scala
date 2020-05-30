@@ -1,6 +1,7 @@
 package nl.tudelft.ewi.abs.nonnenmacher.parquet
 
 import nl.tudelft.ewi.abs.nonnenmacher.NativeParquetReader
+import nl.tudelft.ewi.abs.nonnenmacher.utils.StartStopMeasurment
 import org.apache.arrow.vector.types.pojo.Schema
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.ColumnarBatchArrowConverter.VectorRootToColumnarBatch
@@ -9,6 +10,7 @@ import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.expressions.{Attribute, Expression}
 import org.apache.spark.sql.execution.FileSourceScanExec
 import org.apache.spark.sql.execution.datasources.HadoopFsRelation
+import org.apache.spark.sql.execution.metric.SQLMetrics
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.util.ArrowUtils
 import org.apache.spark.sql.vectorized.ColumnarBatch
@@ -30,7 +32,13 @@ class NativeParquetSourceScanExec(@transient relation: HadoopFsRelation,
 
   private val dataSchema = relation.dataSchema
 
+
   protected override def doExecuteColumnar(): RDD[ColumnarBatch] = {
+
+    val maxRecordsPerBatch = conf.columnBatchSize
+    val time = longMetric("time")
+
+    println("maxRecordsPerBatch: "+maxRecordsPerBatch)
 
     new RDD[ColumnarBatch](relation.sparkSession.sparkContext, Nil) {
 
@@ -42,9 +50,26 @@ class NativeParquetSourceScanExec(@transient relation: HadoopFsRelation,
         val schema: Schema = ArrowUtils.toArrowSchema(requiredSchema, null) //TODO read from properties
 
         //TODO: currently only 1 file supported!
-        new NativeParquetReader(fileName, inputSchema, schema, 100) //TODO read from properties
+        new Iterator[ColumnarBatch] with StartStopMeasurment {
+
+          val innerIter : Iterator[ColumnarBatch] = new NativeParquetReader(fileName, inputSchema, schema, maxRecordsPerBatch) //TODO read from properties
           .map(root => new ColumnarBatchWithSelectionVector(root.getFieldVectors.asScala, root.getRowCount, null))
           .map(_.toColumnarBatch)
+
+          override def hasNext: Boolean = {
+            start()
+            val r = innerIter.hasNext
+            time+=stop()
+            r
+          }
+
+          override def next(): ColumnarBatch = {
+            start()
+            val r = innerIter.next()
+            time+=stop()
+            r
+          }
+        }
       }
 
       override protected def getPartitions: Array[Partition] = Array(new Partition {
@@ -60,4 +85,7 @@ class NativeParquetSourceScanExec(@transient relation: HadoopFsRelation,
     }
     other.isInstanceOf[NativeParquetSourceScanExec]
   }
+
+  override lazy val metrics = Map( "time" -> SQLMetrics.createNanoTimingMetric(sparkContext, "time in [ns]"))
+
 }
