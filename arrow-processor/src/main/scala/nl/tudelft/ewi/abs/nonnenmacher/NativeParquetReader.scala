@@ -34,6 +34,7 @@ class NativeParquetReader(val fileName: String, val inputSchema: Schema, val out
     if (isFinished) return false
     if (preLoadedBatch.isDefined) return true //next batch already loaded
 
+    currentBatch.foreach(_.close()) //release current batch
     preLoadedBatch = readNextBatchIfAvailable()
 
     if (preLoadedBatch.isDefined) true
@@ -45,7 +46,6 @@ class NativeParquetReader(val fileName: String, val inputSchema: Schema, val out
   }
 
   override def next(): VectorSchemaRoot = {
-    currentBatch.foreach(_.close()) //release current batch
     hasNext //loads next batch in case it is not yet loaded
     val res = preLoadedBatch.getOrElse(throw new IllegalAccessException("The Iterator is already closed"))
     currentBatch = preLoadedBatch

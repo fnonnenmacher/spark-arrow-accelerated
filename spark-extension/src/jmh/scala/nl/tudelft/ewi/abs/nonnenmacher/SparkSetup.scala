@@ -14,7 +14,7 @@ object SparkSetup {
   private def extensionOf(s: String): Seq[SparkSessionExtensions => Unit] = s match {
     case PLAIN => Seq()
     case PARQUET_ONLY =>
-      Seq(_.injectPlannerStrategy(x => NativeParquetReaderStrategy()), ArrowColumnarExtension())
+      Seq(_.injectPlannerStrategy(x => NativeParquetReaderStrategy()))
     case PARQUET_AND_GANDIVA =>
       Seq(_.injectPlannerStrategy(x => NativeParquetReaderStrategy(true)),
         ProjectionOnGandivaExtension(),

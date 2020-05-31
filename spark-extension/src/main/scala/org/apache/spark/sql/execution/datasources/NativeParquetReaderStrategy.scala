@@ -17,7 +17,7 @@ import org.apache.spark.util.collection.BitSet
  * inject my own FileSourceScanExec.
  * For the future I want to understand which optimizations are applied here and which of them are relevant for me.
  */
-case class NativeParquetReaderStrategy(val gandivaEnebaled: Boolean = false) extends Strategy with Logging {
+case class NativeParquetReaderStrategy(val gandivaEnabled: Boolean = false) extends Strategy with Logging {
 
   // should prune buckets iff num buckets is greater than 1 and there is only one bucket column
   private def shouldPruneBuckets(bucketSpec: Option[BucketSpec]): Boolean = {
@@ -165,7 +165,7 @@ case class NativeParquetReaderStrategy(val gandivaEnebaled: Boolean = false) ext
       val outputAttributes = readDataColumns ++ partitionColumns
 
       val scan =
-        new NativeParquetSourceScanExec(
+        NativeParquetSourceScanExec(
           fsRelation,
           outputAttributes,
           outputSchema,
@@ -175,7 +175,7 @@ case class NativeParquetReaderStrategy(val gandivaEnebaled: Boolean = false) ext
           table.map(_.identifier))
 
       val afterScanFilter = afterScanFilters.toSeq.reduceOption(expressions.And)
-      val withFilter = if (gandivaEnebaled) {
+      val withFilter = if (gandivaEnabled) {
         afterScanFilter.map(GandivaFilterExec(_, scan)).getOrElse(scan)
       } else {
         afterScanFilter.map(execution.FilterExec(_, scan)).getOrElse(scan)
@@ -183,7 +183,7 @@ case class NativeParquetReaderStrategy(val gandivaEnebaled: Boolean = false) ext
       val withProjections = if (projects == withFilter.output) {
         withFilter
       } else {
-        if (gandivaEnebaled) {
+        if (gandivaEnabled) {
           GandivaProjectExec(projects, withFilter)
         } else {
           execution.ProjectExec(projects, withFilter)

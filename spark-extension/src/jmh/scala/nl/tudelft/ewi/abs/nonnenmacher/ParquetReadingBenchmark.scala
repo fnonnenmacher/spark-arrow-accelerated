@@ -12,42 +12,54 @@ import nl.tudelft.ewi.abs.nonnenmacher.SparkSetup._
 
 @BenchmarkMode(Array(Mode.AverageTime))
 @OutputTimeUnit(TimeUnit.SECONDS)
-@Warmup(iterations = 10, time = 1)
-@Measurement(iterations = 20, time = 1, timeUnit = MILLISECONDS)
+@Warmup(iterations = 5, time = 1)
+@Measurement(iterations = 5, time = 1, timeUnit = MILLISECONDS)
 @State(Scope.Benchmark)
 @Fork(1)
 class ParquetReadingBenchmark {
 
 //  @Benchmark
   def readAllFields(myState: MyState): Unit = {
-    val sqlDF: DataFrame = myState.spark.sql(s"SELECT * FROM parquet.`$rootDir/data/big-example.parquet`");
-    println(sqlDF.collect().length)
+    val allFields = myState.spark.sql(s"SELECT * FROM parquet.`$rootDir/data/big-example.parquet`").collect();
+    println(allFields.length)
   }
 
 //  @Benchmark
-  def readIntFieldAndCalcSum(myState: MyState): Unit = {
-    val i = new Random().nextInt() %100
+  def readSingleIntField(myState: MyState): Unit = {
+    val singleField = myState.spark.sql(s"SELECT `int-field` FROM parquet.`$rootDir/data/big-example.parquet`").collect()
+    println("SUM:"+  singleField.length)
+  }
 
-    val sqlDF: DataFrame = myState.spark.sql(s"SELECT `int-field` + $i AS s FROM parquet.`$rootDir/data/big-example.parquet`").agg("s"->"sum")
-    println("SUM:"+  sqlDF.collect().head)
+//  @Benchmark
+  def readSingleIntFieldAndCalcSum(myState: MyState): Unit = {
+    val sum = myState.spark.sql(s"SELECT `int-field` FROM parquet.`$rootDir/data/big-example.parquet`")
+      .agg("int-field"->"sum").collect()
+    println("SUM:"+  sum.head)
   }
 
 //  @Benchmark
   def read5MillionIntTriples(myState: MyState): Unit = {
-    val sqlDF: DataFrame = myState.spark.sql(s"SELECT * FROM parquet.`$rootDir/data/5million-int-triples.parquet`");
+    val rows = myState
+      .spark.sql(s"SELECT * FROM parquet.`$rootDir/data/5million-int-triples.parquet`").collect()
 
-    val rows = sqlDF.collect()
     println("HEAD:"+rows.head)
     println("Length:"+ rows.length)
   }
 
 //  @Benchmark
-  def readFieldsOf5MillionIntTriples(myState: MyState): Unit = {
-    val i = new Random().nextInt() %100
-    val sqlDF: DataFrame = myState.spark.sql(s"SELECT * FROM parquet.`$rootDir/data/5million-int-triples.parquet`")
-      .agg("x"->"sum", "N2x"->"sum", "N3x"->"sum")
+  def readSingleIntOf5MillionIntTriples(myState: MyState): Unit = {
+    val rows = myState.spark.sql(s"SELECT * FROM parquet.`$rootDir/data/5million-int-triples.parquet`")
+      .collect()
 
-    val rows = sqlDF.collect()
+    println("HEAD:"+rows.head)
+    println("Length:"+ rows.length)
+  }
+
+//  @Benchmark
+  def readSingleIntOf5MillionIntTriplesAndCalcSum(myState: MyState): Unit = {
+    val rows = myState.spark.sql(s"SELECT * FROM parquet.`$rootDir/data/5million-int-triples.parquet`")
+      .agg("x"->"sum", "N2x"->"sum", "N3x"->"sum").collect()
+
     println("HEAD:"+rows.head)
     println("Length:"+ rows.length)
   }
@@ -63,9 +75,12 @@ object ParquetReadingBenchmark {
     @Param(Array("PLAIN", "PARQUET_ONLY")) //
     var sparkSetup: String = _
 
+    @Param(Array( "32000", "64000"))
+    var batchSize: Int = _
+
     @Setup(Level.Trial)
     def doSetup(): Unit = {
-      spark = SparkSetup.initSpark(sparkSetup)
+      spark = SparkSetup.initSpark(sparkSetup, batchSize)
     }
 
     @Setup(Level.Invocation)

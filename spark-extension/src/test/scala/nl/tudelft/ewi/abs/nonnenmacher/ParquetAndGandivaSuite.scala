@@ -11,14 +11,14 @@ import org.scalatest.junit.JUnitRunner
 @RunWith(classOf[JUnitRunner])
 class ParquetAndGandivaSuite extends FunSuite with SparkSessionGenerator {
 
-  override def withExtensions: Seq[SparkSessionExtensions => Unit] = Seq(ProjectionOnGandivaExtension(), ArrowColumnarExtension())
+//  override def withExtensions: Seq[SparkSessionExtensions => Unit] = Seq(ProjectionOnGandivaExtension(), ArrowColumnarExtension())
 
-  //  override def withExtensions: Seq[SparkSessionExtensions => Unit] =
-//    Seq(_.injectPlannerStrategy(x => NativeParquetReaderStrategy(true)),
-//      ProjectionOnGandivaExtension(),
-//      ArrowColumnarExtension())
+    override def withExtensions: Seq[SparkSessionExtensions => Unit] =
+    Seq(_.injectPlannerStrategy(x => NativeParquetReaderStrategy(true)),
+      ProjectionOnGandivaExtension(),
+      ArrowColumnarExtension())
 
-  ignore("read from parquet format") {
+  test("read from parquet format") {
 
     spark.conf.set("spark.sql.codegen.wholeStage", false)
 
@@ -46,7 +46,7 @@ class ParquetAndGandivaSuite extends FunSuite with SparkSessionGenerator {
     assert(res.contains(("number-4", 8)))
   }
 
-  ignore("dremio1") {
+  test("dremio1") {
 
     val sqlDF = spark.sql(s"SELECT `x` + `N2x` + `N3x` AS sum FROM parquet.`../data/5million-int-triples.parquet`")
       .agg("sum" -> "max")
@@ -85,7 +85,7 @@ class ParquetAndGandivaSuite extends FunSuite with SparkSessionGenerator {
     println("Executed Plan:")
     println(sqlDF.queryExecution.executedPlan)
 
-//    assert(sqlDF.queryExecution.executedPlan.find(_.isInstanceOf[NativeParquetSourceScanExec]).isDefined)
+    assert(sqlDF.queryExecution.executedPlan.find(_.isInstanceOf[NativeParquetSourceScanExec]).isDefined)
     assert(sqlDF.queryExecution.executedPlan.find(_.isInstanceOf[GandivaProjectExec]).isDefined)
 
     println(sqlDF.collect.head)

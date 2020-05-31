@@ -24,7 +24,7 @@ class ParquetAndGandivaReadingBenchmark {
     println("MAX:" + max)
   }
 
-//  @Benchmark
+  //  @Benchmark
   def dremio2(myState: MyState): Unit = {
     val res = myState.spark.sql("SELECT" +
       " `x` + `N2x` + `N3x` AS s1," +
@@ -41,7 +41,7 @@ class ParquetAndGandivaReadingBenchmark {
       ).collect().head
 
     println("Results:" + res)
-//    println(res.queryExecution.debug.codegen())
+    //    println(res.queryExecution.debug.codegen())
   }
 }
 
@@ -52,10 +52,10 @@ object ParquetAndGandivaReadingBenchmark {
 
     var spark: SparkSession = _
 
-    @Param(Array("PLAIN", "PARQUET_ONLY", "PARQUET_AND_GANDIVA"))
+    @Param(Array("PLAIN", "PARQUET_ONLY"))
     var sparkSetup: String = _
 
-    @Param(Array("16000", "32000", "64000", "128000"))
+    @Param(Array("64000"))
     var batchSize: Int = _
 
     @Setup(Level.Trial)

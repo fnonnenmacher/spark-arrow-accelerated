@@ -5,13 +5,10 @@ import nl.tudelft.ewi.abs.nonnenmacher.utils.AutoCloseProcessingHelper._
 import nl.tudelft.ewi.abs.nonnenmacher.utils.ClosableFunction
 import org.apache.arrow.vector.VectorSchemaRoot
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql
-import org.apache.spark.sql.ColumnarBatchArrowConverter.{ColumnarBatchToVectorRoot, VectorRootToColumnarBatch}
-import org.apache.spark.sql.ColumnarBatchWithSelectionVector
+import org.apache.spark.sql.ColumnarBatchWrapper
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.{Attribute, AttributeReference}
 import org.apache.spark.sql.execution.{SparkPlan, UnaryExecNode}
-import org.apache.spark.sql.types.IntegerType
 import org.apache.spark.sql.util.ArrowUtils
 import org.apache.spark.sql.vectorized.ColumnarBatch
 
@@ -29,32 +26,32 @@ case class FPGAProjectExec(child: SparkPlan, name: String, outputs: Seq[Attribut
   override protected def doExecuteColumnar(): RDD[ColumnarBatch] = {
 
     child.executeColumnar().mapPartitions(batchIter => {
-
       batchIter
-        .map(ColumnarBatchWithSelectionVector.from)
+        .map(ColumnarBatchWrapper.from)
         .mapAndAutoClose(new PFGAProjection)
         .map(_.toColumnarBatch)
     })
 
   }
-    private class PFGAProjection extends ClosableFunction[ColumnarBatchWithSelectionVector, ColumnarBatchWithSelectionVector] {
 
-      private val inputSchema = ArrowUtils.toArrowSchema(child.schema, null) //TODO
-      private val outputSchema = ArrowUtils.toArrowSchema(schema, null) //TODO
+  private class PFGAProjection extends ClosableFunction[ColumnarBatchWrapper, ColumnarBatchWrapper] {
 
-      private val processor = JNIProcessorFactory.threeIntAddingProcessor(inputSchema, outputSchema);
+    private val inputSchema = ArrowUtils.toArrowSchema(child.schema, null) //TODO
+    private val outputSchema = ArrowUtils.toArrowSchema(schema, null) //TODO
+
+    private val processor = JNIProcessorFactory.threeIntAddingProcessor(inputSchema, outputSchema);
 
 
-      override def apply(batch: ColumnarBatchWithSelectionVector): ColumnarBatchWithSelectionVector = {
-        val root = new VectorSchemaRoot(batch.fieldVectors.asJava)
-        root.setRowCount(batch.fieldVectorRows)
-        val rootOut = processor.apply(root)
+    override def apply(batch: ColumnarBatchWrapper): ColumnarBatchWrapper = {
+      val root = new VectorSchemaRoot(batch.fieldVectors.toList.asJava)
+      root.setRowCount(batch.numRows)
+      val rootOut = processor.apply(root)
 
-        new sql.ColumnarBatchWithSelectionVector(rootOut.getFieldVectors.asScala, rootOut.getRowCount,batch.selectionVector)
-      }
-
-      override def close(): Unit = processor.close()
+      ColumnarBatchWrapper(rootOut)
     }
+
+    override def close(): Unit = processor.close()
+  }
 
   override def output: Seq[Attribute] = outputs
 }

@@ -78,7 +78,8 @@ class RowToArrowColumnarExec(override val child: SparkPlan) extends RowToColumna
           }
           arrowWriter.finish()
 
-          new ColumnarBatchWithSelectionVector(root.getFieldVectors.asScala, rowCount, null).toColumnarBatch
+          root.setRowCount(rowCount)
+          ColumnarBatchWrapper(root).toColumnarBatch
         }
       }
     }
@@ -114,10 +115,8 @@ class ArrowColumnarToRowExec(override val child: SparkPlan) extends ColumnarToRo
       batches.flatMap { batch =>
         start()
         numInputBatches += 1
-        val colBatch = ColumnarBatchWithSelectionVector.from(batch)
-
-        numOutputRows += colBatch.getRecordCount
-
+        val colBatch = ColumnarBatchWrapper.from(batch)
+        numOutputRows += colBatch.numRows
         val res = colBatch.rowIterator
           .map(toUnsafe)
         conversionTime += stop()

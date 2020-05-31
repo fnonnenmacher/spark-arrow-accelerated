@@ -13,7 +13,7 @@ import org.scalatest.{BeforeAndAfterEach, FunSuite}
 @RunWith(classOf[JUnitRunner])
 class ParquetReaderSuite extends FunSuite with BeforeAndAfterEach with SparkSessionGenerator{
 
-  override def withExtensions: Seq[SparkSessionExtensions => Unit] = Seq(_.injectPlannerStrategy(x => NativeParquetReaderStrategy()), ArrowColumnarExtension())
+  override def withExtensions: Seq[SparkSessionExtensions => Unit] = Seq(_.injectPlannerStrategy(x => NativeParquetReaderStrategy()))
 
   ignore("creates example parquet file for tests") {
     val spark = SparkSession
