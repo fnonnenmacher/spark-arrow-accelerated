@@ -11,8 +11,8 @@ import org.openjdk.jmh.infra.Blackhole
 
 @BenchmarkMode(Array(Mode.SingleShotTime))
 @OutputTimeUnit(TimeUnit.SECONDS)
-@Warmup(iterations = 30, time = 1)
-@Measurement(iterations = 40, time = 1, timeUnit = MILLISECONDS)
+@Warmup(iterations = 100, time = 1)
+@Measurement(iterations = 100, time = 1, timeUnit = MILLISECONDS)
 @State(Scope.Benchmark)
 @Fork(1)
 class ParquetAndGandivaReadingBenchmark {
@@ -25,7 +25,7 @@ class ParquetAndGandivaReadingBenchmark {
     blackhole.consume(max)
   }
 
-  @Benchmark
+//  @Benchmark
   def dremio2(blackhole: Blackhole, myState: MyState): Unit = {
     val res = myState.spark.sql("SELECT" +
       " `x` + `N2x` + `N3x` AS s1," +
@@ -53,7 +53,6 @@ class ParquetAndGandivaReadingBenchmark {
 
     blackhole.consume(max)
   }
-
 }
 
 object ParquetAndGandivaReadingBenchmark {
@@ -63,7 +62,7 @@ object ParquetAndGandivaReadingBenchmark {
 
     var spark: SparkSession = _
 
-    @Param(Array(PLAIN, PARQUET_ONLY, PARQUET_AND_GANDIVA))
+    @Param(Array(PLAIN, PARQUET_ONLY, PARQUET_AND_GANDIVA, WITH_MAX_AGGREGATION))
     var sparkSetup: String = _
 
     @Param(Array("64000"))
@@ -85,6 +84,8 @@ object ParquetAndGandivaReadingBenchmark {
 
     @TearDown(Level.Trial)
     def doTearDown(): Unit = {
+//      println("DONE! You have 3 min to check http://192.168.0.102:4040/SQL/")
+//      Thread.sleep(3* 60*1000)
       spark.close()
     }
   }

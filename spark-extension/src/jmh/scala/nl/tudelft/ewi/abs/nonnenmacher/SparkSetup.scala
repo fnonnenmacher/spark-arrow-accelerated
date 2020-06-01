@@ -7,7 +7,7 @@ import nl.tudelft.ewi.abs.nonnenmacher.parquet.NativeParquetSourceScanExec
 import org.apache.spark.sql.execution.datasources.NativeParquetReaderStrategy
 import org.apache.spark.sql.execution.{FileSourceScanExec, QueryExecution}
 import org.apache.spark.sql.util.QueryExecutionListener
-import org.apache.spark.sql.{ArrowColumnarExtension, SparkSession, SparkSessionExtensions}
+import org.apache.spark.sql.{ArrowColumnarExtension, ColumnarToRowMaxAggregatorExec, DirtyMaxAggregationExtension, SparkSession, SparkSessionExtensions}
 
 object SparkSetup {
 
@@ -15,6 +15,7 @@ object SparkSetup {
   final val PLAIN = "PLAIN"
   final val PARQUET_ONLY = "PARQUET_ONLY"
   final val PARQUET_AND_GANDIVA = "PARQUET_AND_GANDIVA"
+  final val WITH_MAX_AGGREGATION = "WITH_MAX_AGGREGATION"
 
   private def extensionOf(s: String): Seq[SparkSessionExtensions => Unit] = s match {
     case PLAIN => Seq()
@@ -24,6 +25,10 @@ object SparkSetup {
       Seq(_.injectPlannerStrategy(x => NativeParquetReaderStrategy(true)),
         ProjectionOnGandivaExtension(),
         ArrowColumnarExtension())
+    case WITH_MAX_AGGREGATION =>
+      Seq(_.injectPlannerStrategy(x => NativeParquetReaderStrategy(true)),
+        ProjectionOnGandivaExtension(),
+        DirtyMaxAggregationExtension())
     case _ => throw new IllegalArgumentException(s"Spark configuration $s not defined!")
   }
 
@@ -53,16 +58,22 @@ object SparkSetup {
 
         var scanTime = 0L;
         var gandiva = 0L;
+        var aggregationTime = 0L;
+        var processing = 0L;
 
         qe.executedPlan.foreach {
           case fs@FileSourceScanExec(_, _, _, _, _, _, _) => fs.metrics.get("scanTime").foreach(m => scanTime = m.value)
           case ns@NativeParquetSourceScanExec(_, _, _, _, _, _, _) => ns.metrics.get("scanTime").foreach(m => scanTime = (m.value / 1e6).toLong)
           case g@GandivaFilterExec(_, _) => g.metrics.get("time").foreach(m => gandiva += (m.value / 1e6).toLong)
           case g@GandivaProjectExec(_, _) => g.metrics.get("time").foreach(m => gandiva += (m.value / 1e6).toLong)
+          case g@ColumnarToRowMaxAggregatorExec(_) => {
+            g.metrics.get("aggregationTime").foreach(m => aggregationTime += (m.value / 1e6).toLong)
+            g.metrics.get("processing").foreach(m => processing += (m.value / 1e6).toLong)
+          }
           case _ =>
         }
 
-        metricsResultWriter.write(s"${qe.sparkSession.sparkContext.appName};$scanTime;$gandiva;${(durationNs / 1e6).toLong}\n")
+        metricsResultWriter.write(s"${qe.sparkSession.sparkContext.appName};$scanTime;$gandiva;$aggregationTime;$processing;${(durationNs / 1e6).toLong}\n")
         metricsResultWriter.flush()
       }
 
@@ -81,7 +92,7 @@ object SparkSetup {
       throw new IllegalArgumentException("System property \"output.metrics\" not set!")
 
     val writer = new PrintWriter(new FileWriter(metricsResultFile, true))
-    writer.write("\nCONFIG;scanTime;gandiva;total\n")
+    writer.write("\nCONFIG;scanTime;gandiva;aggregationTime;processing;total\n")
     writer.flush()
     writer
   }

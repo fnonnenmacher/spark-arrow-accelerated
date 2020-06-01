@@ -44,6 +44,8 @@ object JNIProcessorFactory {
     @native def initCopyProcessor(schema: Array[Byte]): Long;
 
     @native def initFletcherProcessor(schema: Array[Byte]): Long
+
+
   }
 
 }

@@ -1,17 +1,16 @@
 package nl.tudelft.ewi.abs.nonnenmacher.parquet
 
 import nl.tudelft.ewi.abs.nonnenmacher.{GlobalAllocator, SparkSessionGenerator}
-import nl.tudelft.ewi.abs.nonnenmacher.gandiva.ProjectionOnGandivaExtension
 import org.apache.spark.sql.execution.datasources.NativeParquetReaderStrategy
 import org.apache.spark.sql.util.ArrowUtils
-import org.apache.spark.sql.{ArrowColumnarExtension, DataFrame, SparkSession, SparkSessionExtensions}
+import org.apache.spark.sql.{DataFrame, SparkSession, SparkSessionExtensions}
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import org.scalatest.{BeforeAndAfterEach, FunSuite}
 
 
 @RunWith(classOf[JUnitRunner])
-class ParquetReaderSuite extends FunSuite with BeforeAndAfterEach with SparkSessionGenerator{
+class ParquetReaderSuite extends FunSuite with BeforeAndAfterEach with SparkSessionGenerator {
 
   override def withExtensions: Seq[SparkSessionExtensions => Unit] = Seq(_.injectPlannerStrategy(x => NativeParquetReaderStrategy()))
 
@@ -33,7 +32,7 @@ class ParquetReaderSuite extends FunSuite with BeforeAndAfterEach with SparkSess
 
   test("read from parquet format") {
 
-//    spark.conf.set("spark.sql.codegen.wholeStage", false)
+    //    spark.conf.set("spark.sql.codegen.wholeStage", false)
 
     val sqlDF: DataFrame = spark.sql("SELECT `string-field` FROM parquet.`../data/big-example.parquet` WHERE `long-field`>2 OR `long-field` < 0")
 
@@ -47,7 +46,7 @@ class ParquetReaderSuite extends FunSuite with BeforeAndAfterEach with SparkSess
     println("Executed Plan:")
     println(sqlDF.queryExecution.executedPlan)
 
-//    println(sqlDF.columns.mkString(", "))
+    //    println(sqlDF.columns.mkString(", "))
     println(sqlDF.count())
   }
 

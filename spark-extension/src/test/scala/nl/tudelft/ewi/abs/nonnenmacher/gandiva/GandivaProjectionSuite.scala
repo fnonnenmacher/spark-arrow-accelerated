@@ -3,14 +3,14 @@ package nl.tudelft.ewi.abs.nonnenmacher.gandiva
 import nl.tudelft.ewi.abs.nonnenmacher.{GlobalAllocator, SparkSessionGenerator}
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.util.ArrowUtils
-import org.apache.spark.sql.{ArrowColumnarConversionRule, ArrowColumnarExtension, SparkSession, SparkSessionExtensions}
+import org.apache.spark.sql.{ArrowColumnarExtension, SparkSessionExtensions}
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import org.scalatest.{BeforeAndAfterEach, FunSuite}
 
 
 @RunWith(classOf[JUnitRunner])
-class GandivaProjectionSuite extends FunSuite with BeforeAndAfterEach with SparkSessionGenerator{
+class GandivaProjectionSuite extends FunSuite with BeforeAndAfterEach with SparkSessionGenerator {
 
   override def withExtensions: Seq[SparkSessionExtensions => Unit] = Seq(ProjectionOnGandivaExtension(), ArrowColumnarExtension())
 

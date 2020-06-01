@@ -3,14 +3,14 @@ package nl.tudelft.ewi.abs.nonnenmacher.gandiva
 import nl.tudelft.ewi.abs.nonnenmacher.{GlobalAllocator, SparkSessionGenerator}
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.util.ArrowUtils
-import org.apache.spark.sql.{ArrowColumnarConversionRule, ArrowColumnarExtension, Row, SparkSession, SparkSessionExtensions}
+import org.apache.spark.sql.{ArrowColumnarExtension, Row, SparkSessionExtensions}
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import org.scalatest.{BeforeAndAfterEach, FunSuite}
 
 
 @RunWith(classOf[JUnitRunner])
-class GandivaFilterSuite extends FunSuite with BeforeAndAfterEach with SparkSessionGenerator{
+class GandivaFilterSuite extends FunSuite with BeforeAndAfterEach with SparkSessionGenerator {
 
   override def withExtensions: Seq[SparkSessionExtensions => Unit] = Seq(ProjectionOnGandivaExtension(), ArrowColumnarExtension())
 
@@ -34,7 +34,7 @@ class GandivaFilterSuite extends FunSuite with BeforeAndAfterEach with SparkSess
     println(res.queryExecution.executedPlan)
 
     //Assert Gandiva filter has been executed
-    assert(res.queryExecution.executedPlan.find(_ .isInstanceOf[GandivaFilterExec]).isDefined)
+    assert(res.queryExecution.executedPlan.find(_.isInstanceOf[GandivaFilterExec]).isDefined)
 
     //Verify the expected results are correct
     val results: Array[Row] = res.collect();

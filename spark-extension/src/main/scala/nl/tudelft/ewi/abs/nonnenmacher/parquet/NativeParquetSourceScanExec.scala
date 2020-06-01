@@ -1,6 +1,6 @@
 package nl.tudelft.ewi.abs.nonnenmacher.parquet
 
-import nl.tudelft.ewi.abs.nonnenmacher.NativeParquetReader
+import nl.tudelft.ewi.abs.nonnenmacher.{NativeParquetReader, TimeMeasuringIterator}
 import nl.tudelft.ewi.abs.nonnenmacher.utils.StartStopMeasurment
 import org.apache.arrow.vector.types.pojo.Schema
 import org.apache.spark.rdd.RDD
@@ -44,26 +44,10 @@ case class NativeParquetSourceScanExec(@transient relation: HadoopFsRelation,
         val inputSchema: Schema = ArrowUtils.toArrowSchema(dataSchema, conf.sessionLocalTimeZone)
         val schema: Schema = ArrowUtils.toArrowSchema(requiredSchema, conf.sessionLocalTimeZone)
 
-        //TODO: currently only 1 file supported!
-        new Iterator[ColumnarBatch] with StartStopMeasurment {
+        val parquetReader: Iterator[ColumnarBatch] = new NativeParquetReader(fileName, inputSchema, schema, maxRecordsPerBatch)
+          .map(toBatch)
 
-          val innerIter: Iterator[ColumnarBatch] = new NativeParquetReader(fileName, inputSchema, schema, maxRecordsPerBatch)
-            .map(toBatch)
-
-          override def hasNext: Boolean = {
-            start()
-            val r = innerIter.hasNext
-            scanTime += stop()
-            r
-          }
-
-          override def next(): ColumnarBatch = {
-            start()
-            val r = innerIter.next()
-            scanTime += stop()
-            r
-          }
-        }
+        new TimeMeasuringIterator(parquetReader, scanTime)
       }
 
       override protected def getPartitions: Array[Partition] = Array(new Partition {

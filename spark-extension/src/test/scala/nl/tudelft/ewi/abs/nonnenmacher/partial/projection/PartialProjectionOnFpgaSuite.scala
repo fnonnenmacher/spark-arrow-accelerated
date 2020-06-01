@@ -1,16 +1,16 @@
 package nl.tudelft.ewi.abs.nonnenmacher.partial.projection
 
-import ArrowFieldDefinitionHelper.nullableInt
 import nl.tudelft.ewi.abs.nonnenmacher.SparkSessionGenerator
+import nl.tudelft.ewi.abs.nonnenmacher.partial.projection.ArrowFieldDefinitionHelper.nullableInt
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.{ArrowColumnarConversionRule, SparkSession, SparkSessionExtensions}
+import org.apache.spark.sql.{ArrowColumnarExtension, SparkSessionExtensions}
 import org.junit.runner.RunWith
 import org.scalatest.FunSuite
 import org.scalatest.junit.JUnitRunner
 
 
 @RunWith(classOf[JUnitRunner])
-class PartialProjectionOnFpgaSuite extends FunSuite with SparkSessionGenerator{
+class PartialProjectionOnFpgaSuite extends FunSuite with SparkSessionGenerator {
 
   override def withExtensions: Seq[SparkSessionExtensions => Unit] = {
     //Define FPGAModules
@@ -20,7 +20,7 @@ class PartialProjectionOnFpgaSuite extends FunSuite with SparkSessionGenerator{
 
     val sumOfThree = FPGAModule("sumOfThree", query = in1 + in2 + in3, output = nullableInt("out"))
 
-    Seq(ProjectionOnFPGAExtension(sumOfThree), _.injectColumnar(_ => ArrowColumnarConversionRule))
+    Seq(ProjectionOnFPGAExtension(sumOfThree), ArrowColumnarExtension())
   }
 
   test("example addition of three values is executed on cpp code") {

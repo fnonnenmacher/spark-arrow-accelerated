@@ -7,7 +7,6 @@
 #include "jni/Assertions.h"
 #include "jni/ProtobufSchemaDeserializer.h"
 
-
 using arrow::Int32Builder;
 
 std::shared_ptr<arrow::RecordBatch> ThreeIntAdderProcessor::process(std::shared_ptr<arrow::RecordBatch> record_batch) {
