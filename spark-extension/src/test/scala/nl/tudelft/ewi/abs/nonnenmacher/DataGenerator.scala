@@ -33,4 +33,22 @@ class DataGenerator extends FunSuite{
     spark.range(5*MILLION).rdd.map(randomTriple).toDF("x", "N2x", "N3x")
       .write.parquet("../data/5million-int-triples.parquet")
   }
+
+  ignore("generateAMillionTimesTenInts") {
+  val spark = SparkSession
+      .builder()
+      .appName("Spark SQL basic example")
+      .config("spark.master", "local")
+      .getOrCreate()
+
+    import spark.implicits._
+
+    spark.conf.set("spark.sql.parquet.compression.codec", value = "uncompressed")
+
+    val rand = new Random();
+    def tenRandomInts(x: Any) = { (rand.nextInt(), rand.nextInt(), rand.nextInt(), rand.nextInt(), rand.nextInt(), rand.nextInt(), rand.nextInt(), rand.nextInt(), rand.nextInt(), rand.nextInt()) }
+
+    spark.range(MILLION).rdd.map(tenRandomInts).toDF("x1", "x2", "x3", "x4", "x5", "x6", "x7", "x8", "x9", "x10")
+      .write.parquet("../data/million-times-10-ints.parquet")
+  }
 }

@@ -1,5 +1,7 @@
+
 plugins {
     id 'scala'
+    id 'com.github.johnrengelman.shadow' version '5.2.0'
     id "me.champeau.gradle.jmh" version "0.5.0"
 }
 
@@ -36,14 +38,65 @@ test {
     systemProperty "java.library.path", libraryPaths.join(':')
 }
 
+def metricsFile = "${project.buildDir}/reports/jmh/metrics.csv"
+
 // JMH Configuration
 jmh {
     duplicateClassesStrategy = DuplicatesStrategy.EXCLUDE
     zip64 = true //https://github.com/melix/jmh-gradle-plugin/issues/159#issuecomment-623278956
-    jvmArgs = ["-Djava.library.path=${libraryPaths.join(':')}".toString(), "-Dproject.root=${project.rootDir}".toString()]
+    jvmArgs = ["-Djava.library.path=${libraryPaths.join(':')}".toString(),
+               "-Dproject.root=${project.rootDir}".toString(),
+                "-Doutput.metrics=$metricsFile".toString(),
+               '-Xms2048M', '-Xmx2048M']
     humanOutputFile = project.file("${project.buildDir}/reports/jmh/details.txt")
-    humanOutputFile = project.file("${project.buildDir}/reports/jmh/details.txt")
+    failOnError = true
 }
+
+def jmhTask = project.tasks.findByPath(":$project.name:jmh")
+
+jmhTask.doFirst {
+    file(metricsFile).delete()
+}
+
+
 jmhJar {
+    mergeServiceFiles()
+    archiveName("spark-extension-jmh.jar")
     zip64 = true //https://github.com/melix/jmh-gradle-plugin/issues/159#issuecomment-623278956
+
 }
+
+static String opt(String k, org.openjdk.jmh.util.Optional opt) {
+    if (opt.hasValue()) {
+        return "-$k ${opt.get()}"
+    } else ""
+}
+
+import java.nio.file.Files
+import java.nio.file.attribute.PosixFilePermission
+
+
+
+task generateJmhStartScript {
+    group("jmh")
+    doLast {
+        def options = jmh.resolveArgs()
+
+        def jvmArgs = options.jvmArgs.get().join(" ")
+        def jarFile = jmhJar.outputs.files[0].absoluteFile
+        def jmhOpts = [opt("o", options.output),
+                       opt("rff", options.result),
+                       opt("rf", options.resultFormat),
+                       opt("foe", options.shouldFailOnError())].join(' ')
+
+        def outputDir =  jmhJar.outputs.files[0].parent
+        def runBenchmarkScript = file("$outputDir/run_benchmark.sh")
+        runBenchmarkScript.text = "rm -f $metricsFile && java -jar $jvmArgs $jarFile $jmhOpts"
+
+        //make executable
+        def perms = Files.getPosixFilePermissions(runBenchmarkScript.toPath())
+        perms.add(PosixFilePermission.OWNER_EXECUTE)
+        Files.setPosixFilePermissions(runBenchmarkScript.toPath(), perms);
+    }
+}
+jmhJar.finalizedBy(generateJmhStartScript)

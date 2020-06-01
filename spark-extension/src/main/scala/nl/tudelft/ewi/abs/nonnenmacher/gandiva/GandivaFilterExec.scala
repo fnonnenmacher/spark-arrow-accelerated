@@ -6,17 +6,19 @@ import nl.tudelft.ewi.abs.nonnenmacher.utils.ClosableFunction
 import org.apache.arrow.gandiva.evaluator.{Filter, SelectionVector, SelectionVectorInt16}
 import org.apache.arrow.gandiva.expression.TreeBuilder.makeCondition
 import org.apache.arrow.memory.BufferAllocator
+import org.apache.arrow.vector.VectorSchemaRoot
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.{Attribute, Expression}
+import org.apache.spark.sql.execution.metric.SQLMetrics
 import org.apache.spark.sql.execution.{SparkPlan, UnaryExecNode}
 import org.apache.spark.sql.util.ArrowUtils
 import org.apache.spark.sql.vectorized.ColumnarBatch
-import org.apache.spark.sql.{ArrowBatchWithSelection, ColumnarBatchWrapper}
+import org.apache.spark.sql.{ColumnarWithSelectionVectorSupport, VectorSchemaRootUtil}
 
 import scala.collection.JavaConverters._
 
-case class GandivaFilterExec(filterExpression: Expression, child: SparkPlan) extends UnaryExecNode {
+case class GandivaFilterExec(filterExpression: Expression, child: SparkPlan) extends UnaryExecNode with ColumnarWithSelectionVectorSupport {
 
   override def supportsColumnar: Boolean = true
 
@@ -25,31 +27,39 @@ case class GandivaFilterExec(filterExpression: Expression, child: SparkPlan) ext
   }
 
   override protected def doExecuteColumnar(): RDD[ColumnarBatch] = {
+    throw new IllegalAccessException(s"${getClass.getSimpleName} does not support regular columnar data processing. Only in combination with the SelectionVector")
+  }
+
+  override protected def doExecuteColumnarWithSelection(): RDD[(ColumnarBatch, SelectionVector)] = {
+    val time = longMetric("time")
+
     child.executeColumnar().mapPartitions { batchIter =>
+      var start: Long = 0
       batchIter
-        .map(ColumnarBatchWrapper.from)
+        .map { x => start = System.nanoTime(); x }
+        .map(VectorSchemaRootUtil.from)
         .mapAndAutoClose(new GandivaFilter)
-        .map(_.toColumnarBatch)
+        .map { case (root, selectionVector) => (VectorSchemaRootUtil.toBatch(root), selectionVector) }
+        .map { x => time += System.nanoTime() - start; x }
     }
   }
 
-  private class GandivaFilter extends ClosableFunction[ColumnarBatchWrapper, ColumnarBatchWrapper] {
+  private class GandivaFilter extends ClosableFunction[VectorSchemaRoot, (VectorSchemaRoot, SelectionVector)] {
 
     private val allocator: BufferAllocator = ArrowUtils.rootAllocator.newChildAllocator(s"${this.getClass.getSimpleName}", 0, Long.MaxValue)
     private val gandivaCondition = makeCondition(GandivaExpressionConverter.transform(filterExpression))
     private val gandivaFilter: Filter = Filter.make(ArrowUtils.toArrowSchema(child.schema, conf.sessionLocalTimeZone), gandivaCondition)
-    private var selectionVector: SelectionVector = _
+    private var selectionVector: Option[SelectionVector] = Option.empty
 
+    override def apply(rootIn: VectorSchemaRoot): (VectorSchemaRoot, SelectionVector) = {
+      selectionVector.foreach(_.getBuffer.close())
 
-    override def apply(batchIn: ColumnarBatchWrapper): ColumnarBatchWrapper = {
-      if (selectionVector != null) selectionVector.getBuffer.close()
+      val buffers: Seq[ArrowBuf] = rootIn.getFieldVectors.asScala.flatMap(f => f.getFieldBuffers.asScala)
+      selectionVector = Option(newSelectionVector(rootIn.getRowCount))
 
-      val buffers: Seq[ArrowBuf] = batchIn.fieldVectors.flatMap(f => f.getFieldBuffers.asScala)
-      selectionVector = newSelectionVector(batchIn.numRows)
+      gandivaFilter.evaluate(rootIn.getRowCount, buffers.asJava, selectionVector.get)
 
-      gandivaFilter.evaluate(batchIn.numRows, buffers.asJava, selectionVector)
-
-      ArrowBatchWithSelection(batchIn.fieldVectors, batchIn.numRows, selectionVector)
+      (rootIn, selectionVector.get)
     }
 
     def newSelectionVector(numRows: Int): SelectionVector = {
@@ -65,11 +75,13 @@ case class GandivaFilterExec(filterExpression: Expression, child: SparkPlan) ext
 
     override def close(): Unit = {
       gandivaFilter.close()
-      selectionVector.getBuffer.close()
+      selectionVector.foreach(_.getBuffer.close())
       allocator.close()
     }
   }
 
   override def output: Seq[Attribute] = child.output
+
+  override lazy val metrics = Map("time" -> SQLMetrics.createNanoTimingMetric(sparkContext, "time in [ns]"))
 }
 

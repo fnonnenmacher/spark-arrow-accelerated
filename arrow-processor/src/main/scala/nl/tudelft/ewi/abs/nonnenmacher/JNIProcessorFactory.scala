@@ -1,26 +1,14 @@
 package nl.tudelft.ewi.abs.nonnenmacher
 
-import org.apache.arrow.gandiva.evaluator.GandivaJniLoader
+import org.apache.arrow.gandiva.evaluator.NativeLibraryLoader
 import org.apache.arrow.gandiva.expression.ArrowTypeHelper
 import org.apache.arrow.vector.types.pojo.Schema
 
 object JNIProcessorFactory {
 
   private lazy val jni = {
-    GandivaJniLoader.load()
-    System.loadLibrary("protobuf")
-    System.loadLibrary("arrow")
-    System.loadLibrary("parquet")
-    System.loadLibrary("arrow_dataset")
-    System.loadLibrary("fletcher_echo")
-    System.loadLibrary("fletcher")
-    System.loadLibrary("arrow-processor-native")
-
+    NativeLibraryLoader.load()
     new Initializer();
-  }
-
-  def loadJNI(): Unit ={
-    jni
   }
 
   def copyProcessor(schema: Schema): JNIProcessor = {
@@ -57,4 +45,5 @@ object JNIProcessorFactory {
 
     @native def initFletcherProcessor(schema: Array[Byte]): Long
   }
+
 }

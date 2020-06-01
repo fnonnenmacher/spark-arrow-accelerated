@@ -7,25 +7,26 @@ import nl.tudelft.ewi.abs.nonnenmacher.ParquetAndGandivaReadingBenchmark.MyState
 import nl.tudelft.ewi.abs.nonnenmacher.SparkSetup._
 import org.apache.spark.sql.SparkSession
 import org.openjdk.jmh.annotations._
+import org.openjdk.jmh.infra.Blackhole
 
-@BenchmarkMode(Array(Mode.AverageTime))
+@BenchmarkMode(Array(Mode.SingleShotTime))
 @OutputTimeUnit(TimeUnit.SECONDS)
-@Warmup(iterations = 10, time = 1)
-@Measurement(iterations = 10, time = 1, timeUnit = MILLISECONDS)
+@Warmup(iterations = 30, time = 1)
+@Measurement(iterations = 40, time = 1, timeUnit = MILLISECONDS)
 @State(Scope.Benchmark)
 @Fork(1)
 class ParquetAndGandivaReadingBenchmark {
 
   @Benchmark
-  def dremio1(myState: MyState): Unit = {
+  def dremio1(blackhole: Blackhole, myState: MyState): Unit = {
     val max = myState.spark.sql(s"SELECT `x` + `N2x` + `N3x` AS sum FROM parquet.`$rootDir/data/5million-int-triples.parquet`")
-      .agg("sum" -> "max").collect.head
+      .agg("sum" -> "max").limit(1).first()
 
-    println("MAX:" + max)
+    blackhole.consume(max)
   }
 
-  //  @Benchmark
-  def dremio2(myState: MyState): Unit = {
+  @Benchmark
+  def dremio2(blackhole: Blackhole, myState: MyState): Unit = {
     val res = myState.spark.sql("SELECT" +
       " `x` + `N2x` + `N3x` AS s1," +
       " `x` * `N2x` - `N3x` AS s2," +
@@ -38,11 +39,21 @@ class ParquetAndGandivaReadingBenchmark {
         "s3" -> "sum",
         "c1" -> "count",
         "c2" -> "count",
-      ).collect().head
+      ).limit(1).first()
 
-    println("Results:" + res)
-    //    println(res.queryExecution.debug.codegen())
+    blackhole.consume(res)
   }
+
+  @Benchmark
+  def tenInts(blackhole: Blackhole, myState: MyState): Unit = {
+
+    val max = myState.spark.sql(s"SELECT `x1` + `x2` + `x3` + `x4` + `x5` + `x6` + `x7` + `x8` + `x9` + `x10` AS sum " +
+      s"FROM parquet.`$rootDir/data/million-times-10-ints.parquet` ")
+      .agg("sum" -> "max").limit(1).first()
+
+    blackhole.consume(max)
+  }
+
 }
 
 object ParquetAndGandivaReadingBenchmark {
@@ -52,15 +63,18 @@ object ParquetAndGandivaReadingBenchmark {
 
     var spark: SparkSession = _
 
-    @Param(Array("PLAIN", "PARQUET_ONLY"))
+    @Param(Array(PLAIN, PARQUET_ONLY, PARQUET_AND_GANDIVA))
     var sparkSetup: String = _
 
     @Param(Array("64000"))
     var batchSize: Int = _
 
+    //    @Param(Array("true", "false"))
+    var codegen: Boolean = true
+
     @Setup(Level.Trial)
     def doSetup(): Unit = {
-      spark = SparkSetup.initSpark(sparkSetup, batchSize)
+      spark = SparkSetup.initSpark(sparkSetup, batchSize, codegen)
     }
 
     @Setup(Level.Invocation)
@@ -74,5 +88,4 @@ object ParquetAndGandivaReadingBenchmark {
       spark.close()
     }
   }
-
 }

@@ -2,14 +2,14 @@ package nl.tudelft.ewi.abs.nonnenmacher
 
 
 import io.netty.buffer.ArrowBuf
-import nl.tudelft.ewi.abs.nonnenmacher.utils.StartStopMeasurment
+import org.apache.arrow.gandiva.evaluator.NativeLibraryLoader
 import org.apache.arrow.gandiva.expression.ArrowTypeHelper
 import org.apache.arrow.vector._
-import org.apache.arrow.vector.ipc.message.{ArrowBuffer, ArrowFieldNode}
+import org.apache.arrow.vector.ipc.message.ArrowFieldNode
 import org.apache.arrow.vector.types.pojo.Schema
 
 import scala.collection.JavaConverters._
-import scala.collection.mutable.ListBuffer
+import scala.collection.mutable
 
 class NativeParquetReader(val fileName: String, val inputSchema: Schema, val outputSchema: Schema, val batchSize: Int) extends Iterator[VectorSchemaRoot] {
 
@@ -17,7 +17,7 @@ class NativeParquetReader(val fileName: String, val inputSchema: Schema, val out
   private val memoryPool = new JMemoryPool(allocator)
 
   private val ptr: Long = {
-    JNIProcessorFactory.loadJNI()
+    NativeLibraryLoader.load()
     val inputSchemaBytes = ArrowTypeHelper.arrowSchemaToProtobuf(inputSchema).toByteArray
     val outputSchemaBytes = ArrowTypeHelper.arrowSchemaToProtobuf(outputSchema).toByteArray
     initNativeParquetReader(memoryPool, fileName, inputSchemaBytes, outputSchemaBytes, batchSize)
@@ -28,7 +28,6 @@ class NativeParquetReader(val fileName: String, val inputSchema: Schema, val out
   private var isFinished = false
   private var preLoadedBatch: Option[VectorSchemaRoot] = Option.empty
   private var currentBatch: Option[VectorSchemaRoot] = Option.empty
-
 
   override def hasNext: Boolean = {
     if (isFinished) return false
@@ -53,7 +52,7 @@ class NativeParquetReader(val fileName: String, val inputSchema: Schema, val out
     res
   }
 
-  def close(): Unit ={
+  def close(): Unit = {
     currentBatch.foreach(_.close())
     close(ptr)
     allocator.close()
@@ -66,7 +65,7 @@ class NativeParquetReader(val fileName: String, val inputSchema: Schema, val out
    * [[NativeParquetReader.next()]] is then providing the preloaded batch
    *
    */
-  private def readNextBatchIfAvailable(): Option[VectorSchemaRoot] = {
+  def readNextBatchIfAvailable(): Option[VectorSchemaRoot] = {
     val resultLengths: Array[Long] = Array.ofDim(fieldCount)
     val resultNullCounts: Array[Long] = Array.ofDim(fieldCount)
     val bufferAddresses: Array[Long] = Array.ofDim(fieldCount * 3)
@@ -78,12 +77,7 @@ class NativeParquetReader(val fileName: String, val inputSchema: Schema, val out
       return Option.empty
     }
 
-//    bufferAddresses.zipWithIndex.foreach { case (l, i) => println(s"$i: $l") }
-
-    val buffers: ListBuffer[ArrowBuf] = ListBuffer()
-
-
-    val vectors: java.util.List[FieldVector] = outputSchema.getFields.asScala.zipWithIndex.map { case (field, i) =>
+    val vectors: mutable.Buffer[FieldVector] = outputSchema.getFields.asScala.zipWithIndex.map { case (field, i) =>
       val validityBuffer: ArrowBuf = memoryPool.getBufferByAddress(bufferAddresses(i * 3)).orNull
       val valueBuffer: ArrowBuf = memoryPool.getBufferByAddress(bufferAddresses(i * 3 + 1)).getOrElse(throw new IllegalArgumentException())
       val offsetBuffer: ArrowBuf = memoryPool.getBufferByAddress(bufferAddresses(i * 3 + 2)).orNull
@@ -98,15 +92,9 @@ class NativeParquetReader(val fileName: String, val inputSchema: Schema, val out
         case _ => throw new IllegalArgumentException(s"${field.getFieldType} not supported.")
       }
 
-      Option.apply(validityBuffer).foreach( buffers.append(_))
-      Option.apply(valueBuffer).foreach( buffers.append(_))
-      Option.apply(offsetBuffer).foreach( buffers.append(_))
-
       vector
-    }.asJava
-    val r = Option(new VectorSchemaRoot(vectors))
-//    buffers.foreach(_.close())
-    r
+    }
+    Option(new VectorSchemaRoot(vectors.asJava))
   }
 
   @native def initNativeParquetReader(jMemoryPool: JMemoryPool, fileName: String, inputSchemaBytes: Array[Byte], outputSchemaBytes: Array[Byte], numRows: Int): Long

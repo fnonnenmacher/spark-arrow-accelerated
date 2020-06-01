@@ -5,14 +5,12 @@ import nl.tudelft.ewi.abs.nonnenmacher.utils.AutoCloseProcessingHelper._
 import nl.tudelft.ewi.abs.nonnenmacher.utils.ClosableFunction
 import org.apache.arrow.vector.VectorSchemaRoot
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.ColumnarBatchWrapper
+import org.apache.spark.sql.VectorSchemaRootUtil
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.{Attribute, AttributeReference}
 import org.apache.spark.sql.execution.{SparkPlan, UnaryExecNode}
 import org.apache.spark.sql.util.ArrowUtils
 import org.apache.spark.sql.vectorized.ColumnarBatch
-
-import scala.collection.JavaConverters._
 
 case class FPGAProjectExec(child: SparkPlan, name: String, outputs: Seq[Attribute])
   extends UnaryExecNode {
@@ -27,27 +25,22 @@ case class FPGAProjectExec(child: SparkPlan, name: String, outputs: Seq[Attribut
 
     child.executeColumnar().mapPartitions(batchIter => {
       batchIter
-        .map(ColumnarBatchWrapper.from)
+        .map(VectorSchemaRootUtil.from)
         .mapAndAutoClose(new PFGAProjection)
-        .map(_.toColumnarBatch)
+        .map(VectorSchemaRootUtil.toBatch)
     })
 
   }
 
-  private class PFGAProjection extends ClosableFunction[ColumnarBatchWrapper, ColumnarBatchWrapper] {
+  private class PFGAProjection extends ClosableFunction[VectorSchemaRoot, VectorSchemaRoot] {
 
     private val inputSchema = ArrowUtils.toArrowSchema(child.schema, null) //TODO
     private val outputSchema = ArrowUtils.toArrowSchema(schema, null) //TODO
-
     private val processor = JNIProcessorFactory.threeIntAddingProcessor(inputSchema, outputSchema);
 
 
-    override def apply(batch: ColumnarBatchWrapper): ColumnarBatchWrapper = {
-      val root = new VectorSchemaRoot(batch.fieldVectors.toList.asJava)
-      root.setRowCount(batch.numRows)
-      val rootOut = processor.apply(root)
-
-      ColumnarBatchWrapper(rootOut)
+    override def apply(root: VectorSchemaRoot): VectorSchemaRoot = {
+      processor.apply(root)
     }
 
     override def close(): Unit = processor.close()

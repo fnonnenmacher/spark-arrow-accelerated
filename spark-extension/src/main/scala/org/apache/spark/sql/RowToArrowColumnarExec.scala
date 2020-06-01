@@ -1,8 +1,10 @@
 package org.apache.spark.sql
 
 import nl.tudelft.ewi.abs.nonnenmacher.utils.StartStopMeasurment
+import org.apache.arrow.gandiva.evaluator.SelectionVector
 import org.apache.arrow.vector.VectorSchemaRoot
 import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.VectorSchemaRootUtil.toBatch
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.UnsafeProjection
 import org.apache.spark.sql.catalyst.rules.Rule
@@ -11,8 +13,6 @@ import org.apache.spark.sql.execution.metric.{SQLMetric, SQLMetrics}
 import org.apache.spark.sql.execution.{ColumnarRule, ColumnarToRowExec, RowToColumnarExec, SparkPlan}
 import org.apache.spark.sql.util.ArrowUtils
 import org.apache.spark.sql.vectorized.ColumnarBatch
-
-import scala.collection.JavaConverters._
 
 
 /**
@@ -35,7 +35,12 @@ object ArrowColumnarExtension {
 case class ConvertToArrowColumnsRule() extends Rule[SparkPlan] {
   override def apply(plan: SparkPlan): SparkPlan = {
     plan match {
-      case ColumnarToRowExec(child) => new ArrowColumnarToRowExec(apply(child))
+      case ColumnarToRowExec(child) => {
+        if (child.isInstanceOf[ColumnarWithSelectionVectorSupport])
+          new ColumnarWithSelectionToRowExec(apply(child))
+        else
+          plan.withNewChildren(plan.children.map(apply))
+      }
       case RowToColumnarExec(child) => new RowToArrowColumnarExec(apply(child))
       case plan => plan.withNewChildren(plan.children.map(apply))
     }
@@ -79,7 +84,7 @@ class RowToArrowColumnarExec(override val child: SparkPlan) extends RowToColumna
           arrowWriter.finish()
 
           root.setRowCount(rowCount)
-          ColumnarBatchWrapper(root).toColumnarBatch
+          toBatch(root)
         }
       }
     }
@@ -99,7 +104,7 @@ class RowToArrowColumnarExec(override val child: SparkPlan) extends RowToColumna
   override def hashCode(): Int = super.hashCode()
 }
 
-class ArrowColumnarToRowExec(override val child: SparkPlan) extends ColumnarToRowExec(child) with StartStopMeasurment{
+class ColumnarWithSelectionToRowExec(override val child: SparkPlan) extends ColumnarToRowExec(child) with StartStopMeasurment {
 
   override def supportCodegen: Boolean = false
 
@@ -107,20 +112,24 @@ class ArrowColumnarToRowExec(override val child: SparkPlan) extends ColumnarToRo
     val numOutputRows = longMetric("numOutputRows")
     val numInputBatches = longMetric("numInputBatches")
     val conversionTime = longMetric("conversionTime")
+
+    if (!child.isInstanceOf[ColumnarWithSelectionVectorSupport]) {
+      throw new IllegalStateException("Cannot ")
+    }
+
+    val childWithSelection: ColumnarWithSelectionVectorSupport = child.asInstanceOf[ColumnarWithSelectionVectorSupport]
+
     // This avoids calling `output` in the RDD closure, so that we don't need to include the entire
     // plan (this) in the closure.
     val localOutput = this.output
-    child.executeColumnar().mapPartitionsInternal { batches =>
+    childWithSelection.executeColumnarWithSelection().mapPartitionsInternal { batches =>
       val toUnsafe = UnsafeProjection.create(localOutput, localOutput)
-      batches.flatMap { batch =>
-        start()
+
+      batches.flatMap { case (batch, selectionVector) =>
         numInputBatches += 1
-        val colBatch = ColumnarBatchWrapper.from(batch)
-        numOutputRows += colBatch.numRows
-        val res = colBatch.rowIterator
-          .map(toUnsafe)
-        conversionTime += stop()
-        res
+        numOutputRows += selectionVector.getRecordCount
+
+        new SelectionVectorRowIterator(batch, selectionVector).map(toUnsafe)
       }
     }
   }
@@ -133,7 +142,7 @@ class ArrowColumnarToRowExec(override val child: SparkPlan) extends ColumnarToRo
     if (!super.equals(other)) {
       return false
     }
-    other.isInstanceOf[ArrowColumnarToRowExec]
+    other.isInstanceOf[ColumnarWithSelectionToRowExec]
   }
 
   override lazy val metrics: Map[String, SQLMetric] = Map(
@@ -143,4 +152,18 @@ class ArrowColumnarToRowExec(override val child: SparkPlan) extends ColumnarToRo
   )
 
   override def hashCode(): Int = super.hashCode()
+}
+
+class SelectionVectorRowIterator(val columnarBatch: ColumnarBatch, val selectionVector: SelectionVector) extends Iterator[InternalRow] {
+  private var i = 0
+
+  override def hasNext: Boolean = i < selectionVector.getRecordCount
+
+  override def next(): InternalRow = {
+    println(s"$i of ${selectionVector.getRecordCount}")
+    if (i >= selectionVector.getRecordCount) throw new NoSuchElementException
+    val nextIndex = selectionVector.getIndex(i)
+    i = i + 1
+    columnarBatch.getRow(nextIndex)
+  }
 }

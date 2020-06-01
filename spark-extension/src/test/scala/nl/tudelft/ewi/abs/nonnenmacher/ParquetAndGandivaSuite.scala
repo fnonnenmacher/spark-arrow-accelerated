@@ -11,9 +11,8 @@ import org.scalatest.junit.JUnitRunner
 @RunWith(classOf[JUnitRunner])
 class ParquetAndGandivaSuite extends FunSuite with SparkSessionGenerator {
 
-//  override def withExtensions: Seq[SparkSessionExtensions => Unit] = Seq(ProjectionOnGandivaExtension(), ArrowColumnarExtension())
 
-    override def withExtensions: Seq[SparkSessionExtensions => Unit] =
+  override def withExtensions: Seq[SparkSessionExtensions => Unit] =
     Seq(_.injectPlannerStrategy(x => NativeParquetReaderStrategy(true)),
       ProjectionOnGandivaExtension(),
       ArrowColumnarExtension())
@@ -51,8 +50,6 @@ class ParquetAndGandivaSuite extends FunSuite with SparkSessionGenerator {
     val sqlDF = spark.sql(s"SELECT `x` + `N2x` + `N3x` AS sum FROM parquet.`../data/5million-int-triples.parquet`")
       .agg("sum" -> "max")
 
-//    val sqlDF : DataFrame = spark.sql(s"SELECT MAX(`x` + `N2x` + `N3x`) FROM parquet.`../data/5million-int-triples.parquet`")
-
 
     println("Executed Plan:")
     println(sqlDF.queryExecution.executedPlan)
@@ -79,9 +76,6 @@ class ParquetAndGandivaSuite extends FunSuite with SparkSessionGenerator {
         "c2" -> "count",
       )
 
-//    val sqlDF : DataFrame = spark.sql(s"SELECT MAX(`x` + `N2x` + `N3x`) FROM parquet.`../data/5million-int-triples.parquet`")
-
-
     println("Executed Plan:")
     println(sqlDF.queryExecution.executedPlan)
 
@@ -89,5 +83,22 @@ class ParquetAndGandivaSuite extends FunSuite with SparkSessionGenerator {
     assert(sqlDF.queryExecution.executedPlan.find(_.isInstanceOf[GandivaProjectExec]).isDefined)
 
     println(sqlDF.collect.head)
+  }
+
+  test("maxOfSumOf10Ints") {
+    val sqlDF = spark.sql(s"SELECT `x1` + `x2` + `x3` + `x4` + `x5` + `x6` + `x7` + `x8` + `x9` + `x10` AS sum " +
+      s"FROM parquet.`../data/million-times-10-ints.parquet` " +
+      "WHERE `x1` < `x2` AND `x3` < `x4`")
+      .agg("sum" -> "max")
+
+    assert(sqlDF.queryExecution.executedPlan.find(_.isInstanceOf[NativeParquetSourceScanExec]).isDefined)
+    assert(sqlDF.queryExecution.executedPlan.find(_.isInstanceOf[GandivaFilterExec]).isDefined)
+    assert(sqlDF.queryExecution.executedPlan.find(_.isInstanceOf[GandivaProjectExec]).isDefined)
+
+    println("Executed Plan:")
+    println(sqlDF.queryExecution.executedPlan)
+
+    val max = sqlDF.collect.head
+    println("MAX: " + max)
   }
 }

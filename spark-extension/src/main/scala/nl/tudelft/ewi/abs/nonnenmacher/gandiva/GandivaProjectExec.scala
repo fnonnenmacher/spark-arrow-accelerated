@@ -3,20 +3,21 @@ package nl.tudelft.ewi.abs.nonnenmacher.gandiva
 import io.netty.buffer.ArrowBuf
 import nl.tudelft.ewi.abs.nonnenmacher.utils.AutoCloseProcessingHelper._
 import nl.tudelft.ewi.abs.nonnenmacher.utils.ClosableFunction
-import org.apache.arrow.gandiva.evaluator.Projector
+import org.apache.arrow.gandiva.evaluator.{Projector, SelectionVector}
 import org.apache.arrow.gandiva.expression.TreeBuilder
 import org.apache.arrow.gandiva.ipc.GandivaTypes.SelectionVectorType
 import org.apache.arrow.memory.BufferAllocator
 import org.apache.arrow.vector.types.pojo.Field
-import org.apache.arrow.vector.{ValueVector, VectorSchemaRoot}
+import org.apache.arrow.vector.{ValueVector, VectorSchemaRoot, VectorUnloader}
 import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.ColumnarWithSelectionVectorSupport
+import org.apache.spark.sql.VectorSchemaRootUtil.{from, toBatch}
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.{Attribute, NamedExpression}
 import org.apache.spark.sql.execution.metric.SQLMetrics
 import org.apache.spark.sql.execution.{SparkPlan, UnaryExecNode}
 import org.apache.spark.sql.util.ArrowUtils
 import org.apache.spark.sql.vectorized.ColumnarBatch
-import org.apache.spark.sql.{ArrowBatch, ArrowBatchWithSelection, ColumnarBatchWrapper}
 
 import scala.collection.JavaConverters._
 
@@ -25,6 +26,8 @@ case class GandivaProjectExec(projectList: Seq[NamedExpression], child: SparkPla
   override def supportsColumnar: Boolean = true
 
   lazy val outputs: Seq[Attribute] = projectList.map(_.toAttribute)
+
+  private lazy val childWithSelectionVector: Boolean = child.isInstanceOf[ColumnarWithSelectionVectorSupport]
 
   override protected def doExecute(): RDD[InternalRow] = {
     throw new IllegalAccessException(s"${getClass.getSimpleName} does only support columnar data processing.")
@@ -38,48 +41,62 @@ case class GandivaProjectExec(projectList: Seq[NamedExpression], child: SparkPla
 
     val time = longMetric("time")
 
-    child.executeColumnar().mapPartitions { batchIter =>
-
-      var start: Long = 0
-
-      batchIter
-        .map { x => start = System.nanoTime(); x }
-        .map(ColumnarBatchWrapper.from)
-        .mapAndAutoClose(new GandivaProjection)
-        .map(_.toColumnarBatch)
-        .map { x => time += System.nanoTime() - start; x }
+    if (childWithSelectionVector) {
+      child.asInstanceOf[ColumnarWithSelectionVectorSupport]
+        .executeColumnarWithSelection().mapPartitions { batchIter =>
+        var start: Long = 0
+        batchIter
+          .map { x => start = System.nanoTime(); x }
+          .map(b => (from(b._1), Option(b._2)))
+          .mapAndAutoClose(new GandivaProjection(childWithSelectionVector))
+          .map(toBatch)
+          .map { x => time += System.nanoTime() - start; x }
+      }
+    } else {
+      child.executeColumnar().mapPartitions { batchIter =>
+        var start: Long = 0
+        batchIter
+          .map { x => start = System.nanoTime(); x }
+          .map(b => (from(b), Option.empty[SelectionVector]))
+          .mapAndAutoClose(new GandivaProjection(childWithSelectionVector))
+          .map(toBatch)
+          .map { x => time += System.nanoTime() - start; x }
+      }
     }
   }
 
-  private class GandivaProjection extends ClosableFunction[ColumnarBatchWrapper, ColumnarBatchWrapper] {
+  private class GandivaProjection(val selectionVectorSupport: Boolean) extends ClosableFunction[(VectorSchemaRoot, Option[SelectionVector]), VectorSchemaRoot] {
 
-    private val selectionVectorType = if (child.isInstanceOf[GandivaFilterExec]) SelectionVectorType.SV_INT16 else SelectionVectorType.SV_NONE
+    private val selectionVectorType = if (selectionVectorSupport) SelectionVectorType.SV_INT16 else SelectionVectorType.SV_NONE
     private val allocator: BufferAllocator = ArrowUtils.rootAllocator.newChildAllocator(s"${this.getClass.getSimpleName}", 0, Long.MaxValue)
     private val treeNodes = projectList.map(GandivaExpressionConverter.transform)
     private val expressionTrees = treeNodes.zip(outputs).map { case (node, attr) => TreeBuilder.makeExpression(node, toField(attr)) }
     private val gandivaProjector: Projector = Projector.make(ArrowUtils.toArrowSchema(child.schema, conf.sessionLocalTimeZone), expressionTrees.asJava, selectionVectorType)
     private val rootOut = VectorSchemaRoot.create(ArrowUtils.toArrowSchema(schema, conf.sessionLocalTimeZone), allocator)
 
-    override def apply(batchIn: ColumnarBatchWrapper): ColumnarBatchWrapper = {
-      val buffers: Seq[ArrowBuf] = batchIn.fieldVectors.flatMap(f => f.getFieldBuffers.asScala)
+    override def apply(pair: (VectorSchemaRoot, Option[SelectionVector])): VectorSchemaRoot = {
+
+      val rootIn = pair._1
+      val batch = new VectorUnloader(rootIn).getRecordBatch
 
       rootOut.clear()
 
-      batchIn match {
-        case ArrowBatch(_, numRows) => {
-          rootOut.setRowCount(numRows) //allocate memory for  all field vectors!
-          val vectors = rootOut.getFieldVectors.asScala.map(_.asInstanceOf[ValueVector])
-          gandivaProjector.evaluate(numRows, buffers.asJava, vectors.asJava)
+      if (selectionVectorSupport) {
+        val selectionVector = pair._2.getOrElse {
+          throw new IllegalStateException("Cannot process projection because SelectionVector missing.")
         }
-        case ArrowBatchWithSelection(_, numRows, selectionVector) => {
-          rootOut.setRowCount(selectionVector.getRecordCount)
-          val vectors = rootOut.getFieldVectors.asScala.map(_.asInstanceOf[ValueVector]) //allocate memory for  all field vectors!
-          gandivaProjector.evaluate(numRows, buffers.asJava, selectionVector, vectors.asJava)
-        }
+        rootOut.setRowCount(selectionVector.getRecordCount)
+        val vectors = rootOut.getFieldVectors.asScala.map(_.asInstanceOf[ValueVector]) //allocate memory for  all field vectors!
+        gandivaProjector.evaluate(batch, selectionVector, vectors.asJava)
+      } else {
+        rootOut.setRowCount(batch.getLength) //allocate memory for  all field vectors!
+        val vectors = rootOut.getFieldVectors.asScala.map(_.asInstanceOf[ValueVector]) //allocate memory for  all field vectors!
+        gandivaProjector.evaluate(batch, vectors.asJava)
       }
-
-      ColumnarBatchWrapper(rootOut)
+      batch.close()
+      rootOut
     }
+
 
     override def close(): Unit = {
       gandivaProjector.close()
