@@ -26,6 +26,7 @@ class JNIProcessor(ptr: Long, val outputSchema: Schema) extends UnaryOperator[Ve
     process(ptr, rootIn.getRowCount, buffersIn.addresses, buffersIn.sizes, expanderOf(rootOut), buffersOut.addresses, buffersOut.sizes)
 
     buffersIn.close()
+    buffersOut.close()
 
     rootOut
   }

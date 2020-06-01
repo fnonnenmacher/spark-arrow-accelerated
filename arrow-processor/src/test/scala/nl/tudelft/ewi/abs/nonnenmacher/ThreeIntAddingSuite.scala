@@ -33,6 +33,9 @@ class ThreeIntAddingSuite extends FunSuite {
     assert(resVec1.get(1) == 222)
     assert(resVec1.get(2) == 333)
 
-    proc.close();
+    rootIn.close()
+    proc.close()
+
+    assert(GlobalAllocator.getAllocatedMemory() == 0)
   }
 }

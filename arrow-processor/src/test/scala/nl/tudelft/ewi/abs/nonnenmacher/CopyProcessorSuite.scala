@@ -26,7 +26,10 @@ class CopyProcessorSuite extends FunSuite {
     assert(resVector.get(1) == 2)
     assert(resVector.get(2) == 3)
 
+    rootIn.close()
     proc.close()
+
+    assert(GlobalAllocator.getAllocatedMemory() == 0)
   }
 
   test("that a long field vector gets correctly copied by the processor"){
@@ -46,7 +49,10 @@ class CopyProcessorSuite extends FunSuite {
     assert(resVector.get(1) == 2L)
     assert(resVector.get(2) == 3L)
 
+    rootIn.close()
     proc.close()
+
+    assert(GlobalAllocator.getAllocatedMemory() == 0)
   }
 
 
@@ -67,6 +73,9 @@ class CopyProcessorSuite extends FunSuite {
     assert(resVector.getObject(1).toString == "Welt")
     assert(resVector.getObject(2).toString == "!")
 
+    rootIn.close()
     proc.close()
+
+    assert(GlobalAllocator.getAllocatedMemory() == 0)
   }
 }

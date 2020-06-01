@@ -1,5 +1,6 @@
 package nl.tudelft.ewi.abs.nonnenmacher.utils
 
+import nl.tudelft.ewi.abs.nonnenmacher.GlobalAllocator
 import org.apache.arrow.vector.{BigIntVector, IntVector, UInt1Vector}
 import org.junit.runner.RunWith
 import org.scalatest.FunSuite
@@ -15,6 +16,9 @@ class ArrowVectorBuilderTest extends FunSuite {
     assert(arrowVector.get(0) === 1L)
     assert(arrowVector.get(1) === 2L)
     assert(arrowVector.get(2) === 3L)
+
+    arrowVector.close()
+    assert(GlobalAllocator.getAllocatedMemory() == 0)
   }
 
   test("that int vectors are created correctly"){
@@ -24,6 +28,9 @@ class ArrowVectorBuilderTest extends FunSuite {
     assert(arrowVector.get(0) === 4)
     assert(arrowVector.get(1) === 5)
     assert(arrowVector.get(2) === 6)
+
+    arrowVector.close()
+    assert(GlobalAllocator.getAllocatedMemory() == 0)
   }
 
   test("that byte vectors are created correctly"){
@@ -33,6 +40,9 @@ class ArrowVectorBuilderTest extends FunSuite {
     assert(arrowVector.get(0) === 7)
     assert(arrowVector.get(1) === 8)
     assert(arrowVector.get(2) === 9)
+
+    arrowVector.close()
+    assert(GlobalAllocator.getAllocatedMemory() == 0)
   }
 
   test("that string vectors are created correctly"){
@@ -41,6 +51,9 @@ class ArrowVectorBuilderTest extends FunSuite {
     assert(arrowVector.getName == "string-field")
     assert(arrowVector.getObject(0).toString === "one")
     assert(arrowVector.getObject(1).toString === "two")
+
+    arrowVector.close()
+    assert(GlobalAllocator.getAllocatedMemory() == 0)
   }
 
   test("that multiple vectors are combined and added to schema root") {
@@ -72,5 +85,8 @@ class ArrowVectorBuilderTest extends FunSuite {
     assert(byteVector.get(0) === 7)
     assert(byteVector.get(1) === 8)
     assert(byteVector.get(2) === 9)
+
+    root.close()
+    assert(GlobalAllocator.getAllocatedMemory() == 0)
   }
 }
