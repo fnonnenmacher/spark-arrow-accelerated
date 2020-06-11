@@ -8,18 +8,41 @@ plugins {
 
 Task generateHeaders = project(':arrow-processor').generateNativeHeaders
 
-def localLibPath = System.getenv("LOCAL_LIBRARY_PATH") ?: "/usr/local/lib"
+class LibFinder {
+
+    def extension = isFamily(FAMILY_MAC) ? "dylib" : "so"
+
+    def libPaths = {
+        def paths = (System.getenv("LD_LIBRARY_PATH")?.split(':')?.toList() ?: [])
+        paths.add ( "/usr/local/lib" )
+        paths.add ( "/usr/local/lib64" )
+        paths
+    }()
+
+    def call(String name) {
+        File library = libPaths.collect { new File("$it/lib$name.$extension") }.find { it.exists() }
+        if (library == null) {
+            throw new GradleException("Cannot find library '$name'. Please add the directory containing the library to LD_LIBRARY_PATH.")
+        }
+        library.absolutePath
+    }
+}
 
 library {
+
+    def findLib = new LibFinder();
+
     privateHeaders.from generateHeaders.outputs.files[0]
 
     binaries.configureEach {
         compileTask.get().dependsOn(generateHeaders)
 
         compileTask.get().compilerArgs.add("-v")
-        compileTask.get().compilerArgs.add("--std=c++14")
+        compileTask.get().compilerArgs.add("--std=c++11")
         compileTask.get().compilerArgs.add("-Wall")
-        compileTask.get().includes '/usr/local/include'
+
+        compileTask.get().includes System.getenv("INCLUDE_PATH") ?: '/usr/local/include'
+
         compileTask.get().includes("${Jvm.current().javaHome}/include")
 
         if (isFamily(FAMILY_MAC)) {
@@ -29,27 +52,19 @@ library {
             compileTask.get().compilerArgs.add('-mmacosx-version-min=10.9')
 
             linkTask.get().linkerArgs.add('-mmacosx-version-min=10.9')
-            linkTask.get().linkerArgs.add("--std=c++14")
+            linkTask.get().linkerArgs.add("--std=c++11")
             linkTask.get().toolChain.set(toolChains.withType(Clang)[0])
-
-            linkTask.get().lib("$localLibPath/libgandiva_jni.dylib")
-            linkTask.get().lib("$localLibPath/libprotobuf.dylib")
-            linkTask.get().lib("$localLibPath/libarrow_dataset.dylib")
-            linkTask.get().lib("$localLibPath/libarrow.dylib")
-            linkTask.get().lib("$localLibPath/libfletcher.dylib")
-            linkTask.get().lib("$localLibPath/libfletcher_echo.dylib")
-            linkTask.get().lib("$localLibPath/libparquet.dylib")
 
         } else if (isFamily(FAMILY_UNIX)) {
             compileTask.get().includes("${Jvm.current().javaHome}/include/linux")
-
-            linkTask.get().lib("$localLibPath/libgandiva_jni.so")
-            linkTask.get().lib("$localLibPath/libprotobuf.so")
-            linkTask.get().lib("$localLibPath/libarrow_dataset.so")
-            linkTask.get().lib("$localLibPath/libarrow.so")
-            linkTask.get().lib("$localLibPath/libfletcher.so")
-            linkTask.get().lib("$localLibPath/libfletcher_echo.so")
-            linkTask.get().lib("$localLibPath/libparquet.so")
         }
+
+        linkTask.get().lib(findLib("gandiva_jni"))
+        linkTask.get().lib(findLib("protobuf"))
+        linkTask.get().lib(findLib("arrow_dataset"))
+        linkTask.get().lib(findLib("arrow"))
+        linkTask.get().lib(findLib("fletcher"))
+        linkTask.get().lib(findLib("fletcher_echo"))
+        linkTask.get().lib(findLib("parquet"))
     }
 }

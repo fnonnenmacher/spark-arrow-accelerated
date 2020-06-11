@@ -1,3 +1,6 @@
+import static org.apache.tools.ant.taskdefs.condition.Os.FAMILY_MAC
+import static org.apache.tools.ant.taskdefs.condition.Os.isFamily
+
 plugins {
     id 'scala'
 }
@@ -19,10 +22,18 @@ dependencies {
     compile "org.apache.arrow:arrow-vector:$arrowVersion"
     compile "org.apache.arrow:arrow-plasma:$arrowVersion"
 
-    // The arrow gandiva library includes only the native libraries for MacOs
-    // therefore on Linux the self-build version has to be used
-    if (System.getenv("ARROW_ROOT")){
-        compile files(System.getenv("ARROW_ROOT")+"/java/gandiva/target/arrow-gandiva-0.17.0.jar")
+    if (isFamily(FAMILY_MAC)) {
+        compile "org.apache.arrow.gandiva:arrow-gandiva:$arrowVersion"
+    } else {
+        // The arrow gandiva library on central maven only includes the native libraries for MacOs
+        // therefore on Linux the self-build version has to be used
+        def arrowRoot = System.getenv("ARROW_ROOT") ?: { throw new Exception("The env variable ARROW_ROOT is not set. Cannot find gandiva jar file ") }()
+        def gandivaJar = file(arrowRoot + "/java/gandiva/target/arrow-gandiva-0.17.0.jar")
+
+        if (!gandivaJar.exists()){
+            throw new Exception ('Cannot find gandiva jar at $ARROW_ROOT/java/gandiva/target/arrow-gandiva-0.17.0.jar')
+        }
+        compile files(gandivaJar)
 
         // transitive dependencies of arrow-gandiva https://mvnrepository.com/artifact/org.apache.arrow.gandiva/arrow-gandiva/0.17.0
         compile "com.google.guava:guava:23.0"
@@ -30,9 +41,6 @@ dependencies {
         compile "org.apache.arrow:arrow-memory:0.17.0"
         compile "org.apache.arrow:arrow-vector:0.17.0"
         compile "org.slf4j:slf4j-api:1.7.25"
-
-    }else {
-        compile "org.apache.arrow.gandiva:arrow-gandiva:$arrowVersion"
     }
 
     //USE JUnit 4 instead of 5 because scalatest is not compatible with jUni5
@@ -66,7 +74,7 @@ task generateNativeHeaders(type: Exec) {
 
     def scalaLibs = "$System.env.SCALA_HOME/lib"
 
-    def dependencies = configurations.runtime.files.collect {it.toPath()}.join(":")
+    def dependencies = configurations.runtime.files.collect { it.toPath() }.join(":")
 
     args('-cp', "$scalaLibs/scala-library.jar:$scalaLibs/scala-reflect.jar:$compileOutput:$dependencies")
 
