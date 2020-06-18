@@ -38,6 +38,7 @@ test {
 }
 
 def metricsFile = "${project.buildDir}/reports/jmh/metrics.csv"
+def metricsRawFile = "${project.buildDir}/reports/jmh/metrics-raw.csv"
 
 // JMH Configuration
 jmh {
@@ -46,7 +47,8 @@ jmh {
     jvmArgs = ["-Djava.library.path=${libraryPaths.join(':')}".toString(),
                "-Dproject.root=${project.rootDir}".toString(),
                "-Doutput.metrics=$metricsFile".toString(),
-               '-Xms2048M', '-Xmx2048M']
+               "-Doutput.metrics.raw=$metricsRawFile".toString(),
+               '-Xms4G', '-Xmx4G']
     humanOutputFile = project.file("${project.buildDir}/reports/jmh/details.txt")
     failOnError = true
 }
@@ -85,7 +87,7 @@ task generateJmhStartScript {
 
         def outputDir = jmhJar.outputs.files[0].parent
         def runBenchmarkScriptFile = file("$outputDir/run_benchmark.sh")
-        runBenchmarkScriptFile.text = "rm -f $metricsFile && java -jar $jvmArgs $jarFile $jmhOpts"
+        runBenchmarkScriptFile.text = "rm -f $metricsFile && rm -f $metricsRawFile && java -jar $jvmArgs $jarFile $jmhOpts"
         runBenchmarkScriptFile.setExecutable(true)
     }
 }

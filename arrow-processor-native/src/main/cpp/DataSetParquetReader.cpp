@@ -48,10 +48,11 @@ DataSetParquetReader::DataSetParquetReader(const std::shared_ptr<arrow::MemoryPo
 //    ASSERT_OK(scanner_builder->Filter( ("int-field"_ < 1000).Copy()) ); //TODO send predicate push-down filters from scala
     ASSERT_OK(scanner_builder->Project(schema_out->field_names()));
     ASSERT_OK(scanner_builder->BatchSize(num_rows));
+    ASSERT_OK(scanner_builder->UseThreads(false));
 
-    scanner = scanner_builder->Finish().ValueOrDie();
+    auto scanner = scanner_builder->Finish().ValueOrDie();
 
-    // batch_size oes not get set correctly with builder
+    // batch_size does not get set correctly with builder
     // Bug has been fixed, but not merged into 0.17.1
     // https://github.com/apache/arrow/pull/6967
     scanner->options()->batch_size = num_rows;
@@ -61,19 +62,23 @@ DataSetParquetReader::DataSetParquetReader(const std::shared_ptr<arrow::MemoryPo
 
     recordBatchIter = std::make_shared<arrow::RecordBatchIterator>(
             scan_task_it->Next().ValueOrDie()->Execute().ValueOrDie());
-
-    //TODO: Semantics of ScanTask - Can there be multiple?
-
-//    if (scan_task_it.Next().ok()) {
-//        std::cout <<"There are more task iterators available" << std::endl;
-//    }
 }
 
 std::shared_ptr<arrow::RecordBatch> DataSetParquetReader::ReadNext() {
     batch = recordBatchIter->Next().ValueOrDie();
-    return batch;
-}
 
+    if (batch != recordBatchEnd) {
+        return batch;
+    }
+
+    const std::shared_ptr<ScanTask> &nextScanTask = scan_task_it->Next().ValueOrDie();
+    if (nextScanTask == scanTaskEnd) {
+        return recordBatchEnd;
+    }
+
+    recordBatchIter = std::make_shared<arrow::RecordBatchIterator>(nextScanTask->Execute().ValueOrDie());
+    return DataSetParquetReader::ReadNext();
+}
 
 JNIEXPORT jlong JNICALL Java_nl_tudelft_ewi_abs_nonnenmacher_NativeParquetReader_initNativeParquetReader
         (JNIEnv *env, jobject, jobject jmemorypool, jstring java_file_name, jbyteArray schema_file_jarr,

@@ -32,6 +32,8 @@ library {
 
     def findLib = new LibFinder();
 
+    def additionalIncludes = System.getenv("ADDITIONAL_INCLUDES")?.split(':')?.toList() ?:[]
+
     privateHeaders.from generateHeaders.outputs.files[0]
 
     binaries.configureEach {
@@ -41,7 +43,10 @@ library {
         compileTask.get().compilerArgs.add("--std=c++11")
         compileTask.get().compilerArgs.add("-Wall")
 
-        compileTask.get().includes System.getenv("INCLUDE_PATH") ?: '/usr/local/include'
+        additionalIncludes.each {
+            compileTask.get().includes(it)
+        }
+        compileTask.get().includes '/usr/local/include'
 
         compileTask.get().includes("${Jvm.current().javaHome}/include")
 
