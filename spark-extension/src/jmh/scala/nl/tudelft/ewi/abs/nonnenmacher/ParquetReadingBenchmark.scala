@@ -40,7 +40,7 @@ class ParquetReadingBenchmark {
 //  @Benchmark
   def read5MillionIntTriples(myState: MyState): Unit = {
     val rows = myState
-      .spark.sql(s"SELECT * FROM parquet.`$rootDir/data/5million-int-triples.parquet`").collect()
+      .spark.sql(s"SELECT * FROM parquet.`$rootDir/data/5-million-int-triples.parquet`").collect()
 
     println("HEAD:"+rows.head)
     println("Length:"+ rows.length)
@@ -48,7 +48,7 @@ class ParquetReadingBenchmark {
 
 //  @Benchmark
   def readSingleIntOf5MillionIntTriples(myState: MyState): Unit = {
-    val rows = myState.spark.sql(s"SELECT * FROM parquet.`$rootDir/data/5million-int-triples.parquet`")
+    val rows = myState.spark.sql(s"SELECT * FROM parquet.`$rootDir/data/5-million-int-triples.parquet`")
       .collect()
 
     println("HEAD:"+rows.head)
@@ -57,7 +57,7 @@ class ParquetReadingBenchmark {
 
 //  @Benchmark
   def readSingleIntOf5MillionIntTriplesAndCalcSum(myState: MyState): Unit = {
-    val rows = myState.spark.sql(s"SELECT * FROM parquet.`$rootDir/data/5million-int-triples.parquet`")
+    val rows = myState.spark.sql(s"SELECT * FROM parquet.`$rootDir/data/5-million-int-triples.parquet`")
       .agg("x"->"sum", "N2x"->"sum", "N3x"->"sum").collect()
 
     println("HEAD:"+rows.head)

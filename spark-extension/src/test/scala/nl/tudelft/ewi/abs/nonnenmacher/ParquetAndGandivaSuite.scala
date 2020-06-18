@@ -2,7 +2,7 @@ package nl.tudelft.ewi.abs.nonnenmacher
 
 import nl.tudelft.ewi.abs.nonnenmacher.gandiva.{GandivaFilterExec, GandivaProjectExec, ProjectionOnGandivaExtension}
 import nl.tudelft.ewi.abs.nonnenmacher.parquet.NativeParquetSourceScanExec
-import org.apache.spark.sql.execution.datasources.NativeParquetReaderStrategy
+import org.apache.spark.sql.execution.datasources.NativeParquetReaderExtension
 import org.apache.spark.sql.{ArrowColumnarExtension, DataFrame, SparkSessionExtensions}
 import org.junit.runner.RunWith
 import org.scalatest.FunSuite
@@ -12,11 +12,11 @@ import org.scalatest.junit.JUnitRunner
 class ParquetAndGandivaSuite extends FunSuite with SparkSessionGenerator {
 
   override def withExtensions: Seq[SparkSessionExtensions => Unit] =
-    Seq(_.injectPlannerStrategy(x => NativeParquetReaderStrategy(true)),
-      ProjectionOnGandivaExtension(),
-      ArrowColumnarExtension())
+    Seq(NativeParquetReaderExtension(true),
+      ProjectionOnGandivaExtension,
+      ArrowColumnarExtension)
 
-  ignore("read from parquet format") {
+  test("read from parquet format") {
 
     spark.conf.set("spark.sql.codegen.wholeStage", false)
 
@@ -44,21 +44,18 @@ class ParquetAndGandivaSuite extends FunSuite with SparkSessionGenerator {
     assert(res.contains(("number-4", 8)))
   }
 
-  ignore("dremio1") {
+  test("dremio1") {
 
-    val sqlDF = spark.sql(s"SELECT `x` + `N2x` + `N3x` AS sum FROM parquet.`../data/5million-int-triples.parquet`")
+    val sqlDF = spark.sql(s"SELECT `x` + `N2x` + `N3x` AS sum FROM parquet.`../data/5-million-int-triples-snappy.parquet`")
       .agg("sum" -> "max")
 
-
-    println("Executed Plan:")
-    println(sqlDF.queryExecution.executedPlan)
+//    println("Executed Plan:")
+//    println(sqlDF.queryExecution.executedPlan)
 
     assert(sqlDF.queryExecution.executedPlan.find(_.isInstanceOf[NativeParquetSourceScanExec]).isDefined)
     assert(sqlDF.queryExecution.executedPlan.find(_.isInstanceOf[GandivaProjectExec]).isDefined)
 
     println(sqlDF.collect.head)
-
-    Thread.sleep(10 * 60 * 1000)
   }
 
   test("dremio2") {
@@ -71,7 +68,7 @@ class ParquetAndGandivaSuite extends FunSuite with SparkSessionGenerator {
       " 3 * `x` + 2* `N2x` + `N3x` AS s3," +
       " `x` >= `N2x` - `N3x` AS c1," +
       " `x` +  `N2x` = `N3x` AS c2 " +
-      "FROM parquet.`../data/5million-int-triples.parquet`")
+      "FROM parquet.`../data/5-million-int-triples-snappy.parquet`")
       .agg("s1" -> "sum",
         "s2" -> "sum",
         "s3" -> "sum",
@@ -79,8 +76,8 @@ class ParquetAndGandivaSuite extends FunSuite with SparkSessionGenerator {
         "c2" -> "count",
       )
 
-    println("Executed Plan:")
-    println(sqlDF.queryExecution.executedPlan)
+//    println("Executed Plan:")
+//    println(sqlDF.queryExecution.executedPlan)
 
     assert(sqlDF.queryExecution.executedPlan.find(_.isInstanceOf[NativeParquetSourceScanExec]).isDefined)
     assert(sqlDF.queryExecution.executedPlan.find(_.isInstanceOf[GandivaProjectExec]).isDefined)
@@ -88,7 +85,7 @@ class ParquetAndGandivaSuite extends FunSuite with SparkSessionGenerator {
     println(sqlDF.collect.head)
   }
 
-  ignore("maxOfSumOf10Ints") {
+  test("maxOfSumOf10Ints") {
     val sqlDF = spark.sql(s"SELECT `x1` + `x2` + `x3` + `x4` + `x5` + `x6` + `x7` + `x8` + `x9` + `x10` AS sum " +
       s"FROM parquet.`../data/million-times-10-ints.parquet` " +
       "WHERE `x1` < `x2` AND `x3` < `x4`")

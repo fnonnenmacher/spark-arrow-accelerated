@@ -2,8 +2,8 @@ package nl.tudelft.ewi.abs.nonnenmacher
 
 import nl.tudelft.ewi.abs.nonnenmacher.fletcher.example.FletcherReductionExampleExtension
 import nl.tudelft.ewi.abs.nonnenmacher.parquet.NativeParquetSourceScanExec
+import org.apache.spark.sql.execution.datasources.NativeParquetReaderExtension
 import org.apache.spark.sql.{FletcherReductionExampleExec, SparkSessionExtensions}
-import org.apache.spark.sql.execution.datasources.NativeParquetReaderStrategy
 import org.junit.runner.RunWith
 import org.scalatest.FunSuite
 import org.scalatest.junit.JUnitRunner
@@ -12,7 +12,7 @@ import org.scalatest.junit.JUnitRunner
 @RunWith(classOf[JUnitRunner])
 class FletcherReductionExampleSuite extends FunSuite with SparkSessionGenerator {
 
-  override def withExtensions: Seq[SparkSessionExtensions => Unit] = Seq(_.injectPlannerStrategy(x => NativeParquetReaderStrategy()), FletcherReductionExampleExtension)
+  override def withExtensions: Seq[SparkSessionExtensions => Unit] = Seq(NativeParquetReaderExtension(), FletcherReductionExampleExtension)
 
   ignore("convert network data to parquet file") {
 
@@ -27,7 +27,7 @@ class FletcherReductionExampleSuite extends FunSuite with SparkSessionGenerator 
       .csv("/Users/fabian/Downloads/Dataset-Unicauca-Version2-87Atts.csv")
       .select("`Flow.ID`", "`Flow.Duration`")
       .repartition(1) //we want to have everything in 1 file
-//      .limit(100000) OPTIONAL
+      //      .limit(100000) OPTIONAL
       .write.parquet("../data/network-traffic")
   }
 

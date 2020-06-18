@@ -73,6 +73,26 @@ class NativeParquetReaderSuite extends FunSuite {
     assert(GlobalAllocator.getAllocatedMemory() == 0)
   }
 
+  ignore("read 500 million values"){
+
+    val intFieldX: Field = Field.nullable("x", MinorType.INT.getType)
+    val intFieldN2x: Field = Field.nullable("N2x", MinorType.INT.getType)
+    val intFieldN3x: Field = Field.nullable("N3x", MinorType.INT.getType)
+
+    val schema =  new Schema(List(intFieldX, intFieldN2x, intFieldN3x).asJava)
+
+    //read only the int-field
+    val reader = new NativeParquetReader("../data/500-million-int-triples-snappy.parquet", schema, schema, 445678)
+
+    val rowCount = reader.map { root =>
+      root.getRowCount
+    }.sum
+
+    // parquet contains in total 1 million elements
+    assert(rowCount == 500 * 1000000)
+    assert(GlobalAllocator.getAllocatedMemory() == 0)
+  }
+
   private def schema(fields: Field*): Schema = {
     new Schema(fields.asJava)
   }

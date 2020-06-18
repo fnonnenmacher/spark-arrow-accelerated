@@ -12,7 +12,7 @@ import org.scalatest.{BeforeAndAfterEach, FunSuite}
 @RunWith(classOf[JUnitRunner])
 class GandivaFilterSuite extends FunSuite with BeforeAndAfterEach with SparkSessionGenerator {
 
-  override def withExtensions: Seq[SparkSessionExtensions => Unit] = Seq(ProjectionOnGandivaExtension(), ArrowColumnarExtension())
+  override def withExtensions: Seq[SparkSessionExtensions => Unit] = Seq(ProjectionOnGandivaExtension, ArrowColumnarExtension)
 
   test("that simple filter query can be executed on Gandiva") {
 

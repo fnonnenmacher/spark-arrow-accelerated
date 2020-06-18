@@ -67,7 +67,7 @@ jmhJar {
 
 }
 
-static String opt(String k, org.openjdk.jmh.util.Optional opt) {
+static String opt(String k, opt) {
     if (opt.hasValue()) {
         return "-$k ${opt.get()}"
     } else ""

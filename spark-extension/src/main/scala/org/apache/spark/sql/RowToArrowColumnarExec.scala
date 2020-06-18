@@ -26,8 +26,8 @@ object ArrowColumnarConversionRule extends ColumnarRule {
   override def postColumnarTransitions: Rule[SparkPlan] = ConvertToArrowColumnsRule();
 }
 
-object ArrowColumnarExtension {
-  def apply(): (SparkSessionExtensions => Unit) = { e: SparkSessionExtensions =>
+object ArrowColumnarExtension extends (SparkSessionExtensions => Unit) {
+  override def apply(e: SparkSessionExtensions):Unit = {
     e.injectColumnar(_ => ArrowColumnarConversionRule)
   }
 }
@@ -142,7 +142,7 @@ class ColumnarWithSelectionToRowExec(override val child: SparkPlan) extends Colu
     if (!super.equals(other)) {
       return false
     }
-    other.isInstanceOf[ColumnarWithSelectionToRowExec]
+    other.isInstanceOf[ArrowMemoryToSparkMemoryExec]
   }
 
   override lazy val metrics: Map[String, SQLMetric] = Map(

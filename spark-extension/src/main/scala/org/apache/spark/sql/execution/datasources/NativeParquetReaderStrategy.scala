@@ -9,15 +9,21 @@ import org.apache.spark.sql.catalyst.expressions.{Attribute, AttributeSet, Empty
 import org.apache.spark.sql.catalyst.planning.ScanOperation
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
 import org.apache.spark.sql.execution._
-import org.apache.spark.sql.{Strategy, execution}
+import org.apache.spark.sql.{SparkSessionExtensions, Strategy, execution}
 import org.apache.spark.util.collection.BitSet
+
+case class NativeParquetReaderExtension(val gandivaEnabled: Boolean = false) extends (SparkSessionExtensions => Unit) {
+  override def apply(e: SparkSessionExtensions) {
+    e.injectPlannerStrategy(_ => NativeParquetReaderStrategy(gandivaEnabled))
+  }
+}
 
 /**
  * For now copied without real changes from [@link org.apache.spark.sql.execution.datasources.FileSourceStrategy] to
  * inject my own FileSourceScanExec.
  * For the future I want to understand which optimizations are applied here and which of them are relevant for me.
  */
-case class NativeParquetReaderStrategy(val gandivaEnabled: Boolean = false) extends Strategy with Logging {
+protected case class NativeParquetReaderStrategy(val gandivaEnabled: Boolean) extends Strategy with Logging {
 
   // should prune buckets iff num buckets is greater than 1 and there is only one bucket column
   private def shouldPruneBuckets(bucketSpec: Option[BucketSpec]): Boolean = {

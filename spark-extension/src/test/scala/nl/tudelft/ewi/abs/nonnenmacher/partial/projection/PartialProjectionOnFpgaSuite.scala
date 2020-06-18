@@ -20,7 +20,7 @@ class PartialProjectionOnFpgaSuite extends FunSuite with SparkSessionGenerator {
 
     val sumOfThree = FPGAModule("sumOfThree", query = in1 + in2 + in3, output = nullableInt("out"))
 
-    Seq(ProjectionOnFPGAExtension(sumOfThree), ArrowColumnarExtension())
+    Seq(ProjectionOnFPGAExtension(sumOfThree), ArrowColumnarExtension)
   }
 
   test("example addition of three values is executed on cpp code") {
