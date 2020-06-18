@@ -62,6 +62,7 @@ test {
 
 def nativeClasses = ['nl.tudelft.ewi.abs.nonnenmacher.JNIProcessor',
                      'nl.tudelft.ewi.abs.nonnenmacher.MaxIntAggregator',
+                     'nl.tudelft.ewi.abs.nonnenmacher.FletcherReductionProcessor',
                      'nl.tudelft.ewi.abs.nonnenmacher.JNIProcessorFactory$Initializer',
                      'nl.tudelft.ewi.abs.nonnenmacher.NativeParquetReader']
 

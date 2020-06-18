@@ -21,8 +21,8 @@ void exitWithError(const std::string& msg);
 
 #define ASSERT_FLETCHER_OK(s)                                                               \
   do {                                                                                      \
-    const ::fletcher::status & _s = s;                                                      \
-    if (!_s.ok()) {                                                                         \
+    fletcher::Status _s = s;                                                      \
+    if (!_s.ok()) {                                                                     \
         std::cout << "FLETCHER ERROR: "  << _s.message << std::endl;                        \
         exitWithError(_s.message);                                                          \
     }                                                                                       \
