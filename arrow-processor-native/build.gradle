@@ -45,6 +45,14 @@ Task generateProtobuf = task generateProtobuf(type: Exec) {
 library {
     def findLib = new LibFinder();
 
+    if (isArch("ppc64le")){
+        // Gradle cannot handle the power systems architecture automatically, therefore we tell them to use the classic linux toolChain
+        //probably not the best/cleanest way to do it, but it seems to work
+        targetMachines = [
+            machines.linux.x86_64
+        ]
+    }
+
     def additionalIncludes = System.getenv("ADDITIONAL_INCLUDES")?.split(':')?.toList() ?:[]
 
     source.from(file('src/main/cpp'), generateProtobuf.outputs.files[0])
