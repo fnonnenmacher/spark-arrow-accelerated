@@ -28,16 +28,31 @@ class LibFinder {
     }
 }
 
-library {
+Task generateProtobuf = task generateProtobuf(type: Exec) {
 
+    def filename = "Types_.proto"
+    inputs.files("$projectDir/$filename")
+
+    outputs.dir("$project.buildDir/protobuf")
+
+    commandLine "protoc"
+
+    args('--proto_path', projectDir.absolutePath)
+    args('--cpp_out', outputs.files[0].absolutePath)
+    args(filename)
+}
+
+library {
     def findLib = new LibFinder();
 
     def additionalIncludes = System.getenv("ADDITIONAL_INCLUDES")?.split(':')?.toList() ?:[]
 
-    privateHeaders.from generateHeaders.outputs.files[0]
+    source.from(file('src/main/cpp'), generateProtobuf.outputs.files[0])
+    privateHeaders.from (generateHeaders.outputs.files[0], generateProtobuf.outputs.files[0])
 
     binaries.configureEach {
         compileTask.get().dependsOn(generateHeaders)
+        compileTask.get().dependsOn(generateProtobuf)
 
         compileTask.get().compilerArgs.add("-v")
         compileTask.get().compilerArgs.add("--std=c++11")
@@ -55,7 +70,6 @@ library {
 
             compileTask.get().toolChain.set(toolChains.withType(Clang)[0])
             compileTask.get().compilerArgs.add('-mmacosx-version-min=10.9')
-
             linkTask.get().linkerArgs.add('-mmacosx-version-min=10.9')
             linkTask.get().linkerArgs.add("--std=c++11")
             linkTask.get().toolChain.set(toolChains.withType(Clang)[0])

@@ -27,11 +27,11 @@ dependencies {
     } else {
         // The arrow gandiva library on central maven only includes the native libraries for MacOs
         // therefore on Linux the self-build version has to be used
-        def arrowRoot = System.getenv("ARROW_ROOT") ?: { throw new Exception("The env variable ARROW_ROOT is not set. Cannot find gandiva jar file ") }()
-        def gandivaJar = file(arrowRoot + "/java/gandiva/target/arrow-gandiva-0.17.0.jar")
+        def gandivaJarDir = System.getenv("GANDIVA_JAR_DIR") ?: { throw new Exception("The env variable GANDIVA_JAR_DIR is not set. Cannot find gandiva jar file ") }()
+        def gandivaJar = file("$gandivaJarDir/arrow-gandiva-${arrowVersion}.jar")
 
-        if (!gandivaJar.exists()){
-            throw new Exception ('Cannot find gandiva jar at $ARROW_ROOT/java/gandiva/target/arrow-gandiva-0.17.0.jar')
+        if (!gandivaJar.exists()) {
+            throw new Exception("Cannot find gandiva jar at \$GANDIVA_JAR_DIR/arrow-gandiva-${arrowVersion}.jar")
         }
         compile files(gandivaJar)
 
@@ -47,7 +47,6 @@ dependencies {
     testCompile 'org.scalatest:scalatest_2.12:3.0.1'
     testImplementation('junit:junit:4.13')
 }
-
 
 
 def libraryPaths = [file("${project(':arrow-processor-native').buildDir}/lib/main/debug").absolutePath,
