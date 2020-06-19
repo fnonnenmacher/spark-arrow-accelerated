@@ -6,13 +6,15 @@
 * published on Dockerhub as [fnonnenmacher/arrow-plasma-java](https://hub.docker.com/r/fnonnenmacher/arrow-plasma-java)
 
 ## Version
-* `0.1`: Contains jdk-8, apache arrow (including plasma)
-* `0.2`: Adds fletcher runtime and echo platform 
-* `0.3`: Adds arrow parquet library
-* `0.4`: Adds llvm-8 and arrow `gandiva`, changes base image to ubuntu (on alpine llvm-8 could not be installed easily)
-* `0.5`: Add parquet reading, remove plasama
-* `0.6`: Add apache arrow dataset 
+* `arrow-plasma-java:0.1`: Contains jdk-8, apache arrow (including plasma)
+* `arrow-plasma-java:0.2`: Adds fletcher runtime and echo platform 
+* `arrow-plasma-java:0.3`: Adds arrow parquet library
+* `arrow-plasma-java:0.4`: Adds llvm-8 and arrow `gandiva`, changes base image to ubuntu (on alpine llvm-8 could not be installed easily)
+* `arrow-plasma-java:0.5`: Add parquet reading, remove plasama
+* `arrow-plasma-java:0.6`: Add apache arrow dataset
+
+* `arrow-gandiva-java:0.7`: Rename docker file, update arrow to 0.17.1, Add snappy compression
 
 ## Commands:
-* Build: `docker build -t fnonnenmacher/arrow-plasma-java:<VERSION> .`
-* Push: `docker push fnonnenmacher/arrow-plasma-java:<VERSION>`
+* Build: `docker build -t fnonnenmacher/arrow-gandiva-java:<VERSION> .`
+* Push: `docker push fnonnenmacher/arrow-gandiva-java:<VERSION>`

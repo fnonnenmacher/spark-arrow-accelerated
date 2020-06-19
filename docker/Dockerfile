@@ -22,55 +22,54 @@ RUN apt-get update && apt-get install -y llvm-8 \
 ENV JAVA_HOME /usr/lib/jvm/java-8-openjdk-amd64/
 
 # Download & install protobuf
-RUN wget -q https://github.com/protocolbuffers/protobuf/releases/download/v3.11.4/protobuf-cpp-3.11.4.tar.gz && \
+RUN wget -q https://github.com/protocolbuffers/protobuf/releases/download/v3.7.1/protobuf-cpp-3.7.1.tar.gz && \
         mkdir /protobuf &&\
-        tar -xzf protobuf-cpp-3.11.4.tar.gz --strip-components 1 -C /protobuf &&\
-        rm -f protobuf-cpp-3.11.4.tar.gz &&\
+        tar -xzf protobuf-cpp-3.7.1.tar.gz --strip-components 1 -C /protobuf &&\
+        rm -f protobuf-cpp-3.7.1.tar.gz &&\
         cd /protobuf &&\
         ./configure &&\
         make &&\
         make install &&\
-        ldconfig
+        ldconfig &&\
+        cd / &&\
+        rm -rf /protobuf
 
-# Download apache arrow
-RUN wget -q http://apache.40b.nl/arrow/arrow-0.17.0/apache-arrow-0.17.0.tar.gz &&\
+# Download & install apache arrow and gandiva jar file
+RUN wget -q http://apache.40b.nl/arrow/arrow-0.17.1/apache-arrow-0.17.1.tar.gz &&\
         mkdir /arrow &&\
-        tar -xzf apache-arrow-0.17.0.tar.gz --strip-components 1 -C /arrow &&\
-        rm -f apache-arrow-0.17.0.tar.gz
-
-# Build and install apache arrow
-RUN mkdir /arrow/cpp/release &&\
+        tar -xzf apache-arrow-0.17.1.tar.gz --strip-components 1 -C /arrow &&\
+        rm -f apache-arrow-0.17.1.tar.gz &&\
+        mkdir /arrow/cpp/release &&\
         cd /arrow/cpp/release &&\
-        cmake -DARROW_PARQUET=ON -DARROW_GANDIVA=ON -DARROW_GANDIVA_JAVA=ON -DARROW_DATASET=ON .. &&\
+        cmake -DARROW_PARQUET=ON -DARROW_GANDIVA=ON -DARROW_GANDIVA_JAVA=ON -DARROW_DATASET=ON -DARROW_WITH_SNAPPY=ON .. &&\
         make &&\
-        make install
-
-# Build gandiva jar file
-RUN cd /arrow/java &&\
-        mvn clean install -P arrow-jni -am -DskipTests -Darrow.cpp.build.dir=../../cpp/release/release
+        make install &&\
+        cd /arrow/java &&\
+        mvn clean install -pl gandiva -P arrow-jni -am -DskipTests -Darrow.cpp.build.dir=../../cpp/release/release &&\
+        mkdir /gandiva-jar &&\
+        cp /arrow/java/gandiva/target/arrow-gandiva-0.17.1.jar /gandiva-jar/arrow-gandiva-0.17.1.jar &&\
+        cd /gandiva-jar &&\
+        rm -rf /arrow
 
 # Download Fletcher
 RUN wget -q https://github.com/abs-tudelft/fletcher/archive/develop.zip &&\
         unzip -q develop.zip  &&\
         mv /fletcher-develop /fletcher &&\
-        rm -f develop.zip
-
-# Install Fletcher Runtime
-RUN mkdir /fletcher/runtime/cpp/build &&\
+        rm -f develop.zip && \
+# Install Fletcher Runtime \
+        mkdir /fletcher/runtime/cpp/build &&\
         cd /fletcher/runtime/cpp/build &&\
         cmake .. &&\
         make &&\
-        make install
-
+        make install &&\
 # Install Fletcher Echo Platform
-RUN mkdir /fletcher/platforms/echo/runtime/build &&\
+        mkdir /fletcher/platforms/echo/runtime/build &&\
         cd /fletcher/platforms/echo/runtime/build &&\
         cmake .. &&\
         make &&\
         make install
 
-ENV ARROW_ROOT /arrow
-
+ENV GANDIVA_JAR_DIR /gandiva-jar
 ENV LOCAL_LIBRARY_PATH /usr/local/lib
 
 VOLUME /app

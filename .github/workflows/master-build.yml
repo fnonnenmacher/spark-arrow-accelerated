@@ -14,10 +14,10 @@ jobs:
     steps:
     - name: Checkout Repository
       uses: actions/checkout@v2
-    - name: Runs the gradle tests in container fnonnenmacher/arrow-plasma-java
+    - name: Runs the gradle tests in container fnonnenmacher/arrow-gandiva-fletcher
       run: |
         docker run \
-        -v ${{ github.workspace }}:/app fnonnenmacher/arrow-plasma-java:0.6 \
+        -v ${{ github.workspace }}:/app fnonnenmacher/arrow-gandiva-fletcher:0.7 \
         /bin/bash -c "./gradlew build"
     - name: Archive test reports of arrow-processor
       if: ${{ failure() }}
