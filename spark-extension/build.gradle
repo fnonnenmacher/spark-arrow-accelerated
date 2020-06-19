@@ -33,6 +33,9 @@ dependencies {
 def libraryPaths = [file("${project(':arrow-processor-native').buildDir}/lib/main/debug").absolutePath,
                     "/usr/local/lib64",
                     "/usr/local/lib"]
+
+libraryPaths.addAll(System.getenv("LD_LIBRARY_PATH")?.split(':')?.toList() ?: [])
+
 test {
     systemProperty "java.library.path", libraryPaths.join(':')
 }
