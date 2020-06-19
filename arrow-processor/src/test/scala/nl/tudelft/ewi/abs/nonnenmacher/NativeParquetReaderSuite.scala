@@ -1,5 +1,7 @@
 package nl.tudelft.ewi.abs.nonnenmacher
 
+import java.io.File
+
 import org.apache.arrow.vector.types.Types.MinorType
 import org.apache.arrow.vector.types.pojo.{Field, Schema}
 import org.apache.arrow.vector.{BigIntVector, IntVector, VarCharVector}
@@ -12,7 +14,7 @@ import scala.collection.JavaConverters._
 @RunWith(classOf[JUnitRunner])
 class NativeParquetReaderSuite extends FunSuite {
 
-  val fileName = "../data/big-example.parquet"
+  val fileName: String =  new File("../data/big-example.parquet").getCanonicalPath
 
   val intField: Field = Field.nullable("int-field", MinorType.INT.getType)
   val longField: Field = Field.nullable("long-field", MinorType.BIGINT.getType)

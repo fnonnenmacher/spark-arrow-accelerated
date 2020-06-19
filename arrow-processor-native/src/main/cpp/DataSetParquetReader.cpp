@@ -25,19 +25,20 @@ DataSetParquetReader::DataSetParquetReader(const std::shared_ptr<arrow::MemoryPo
     pool_ = memory_pool;
 
     // TODO: Support list of files
-    std::shared_ptr<arrow::fs::LocalFileSystem> localfs = std::make_shared<arrow::fs::LocalFileSystem>();
-    FileSource source(file_name, localfs.get());
+    const std::string &uri = "file://" +file_name;
+    std::shared_ptr<arrow::fs::FileSystem> filesystem = arrow::fs::FileSystemFromUri(uri).ValueOrDie();
+    FileSource source(file_name, filesystem.get());
 
     // Parameter for dataset creation
     std::shared_ptr<arrow::dataset::Expression> root_partition = arrow::dataset::scalar(true);
     auto format = std::make_shared<arrow::dataset::ParquetFileFormat>();
-    auto file_info = localfs->GetFileInfo(source.path()).ValueOrDie();
+    auto file_info = filesystem->GetFileInfo(source.path()).ValueOrDie();
 
     // Create dataset
     dataset = arrow::dataset::FileSystemDataset::Make(schema_file,
                                                       root_partition,
                                                       format,
-                                                      localfs,
+                                                      filesystem,
                                                       {file_info}).ValueOrDie();
 
     std::shared_ptr<ScanContext> ctx_ = std::make_shared<ScanContext>();
