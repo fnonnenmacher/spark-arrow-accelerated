@@ -3,7 +3,7 @@ package nl.tudelft.ewi.abs.nonnenmacher
 import nl.tudelft.ewi.abs.nonnenmacher.fletcher.example.FletcherReductionExampleExtension
 import nl.tudelft.ewi.abs.nonnenmacher.parquet.NativeParquetSourceScanExec
 import org.apache.spark.sql.execution.datasources.NativeParquetReaderExtension
-import org.apache.spark.sql.{FletcherReductionExampleExec, SparkSessionExtensions}
+import org.apache.spark.sql.{FletcherReductionExampleExec, SparkSession, SparkSessionExtensions}
 import org.junit.runner.RunWith
 import org.scalatest.FunSuite
 import org.scalatest.junit.JUnitRunner
@@ -14,31 +14,39 @@ class FletcherReductionExampleSuite extends FunSuite with SparkSessionGenerator 
 
   override def withExtensions: Seq[SparkSessionExtensions => Unit] = Seq(NativeParquetReaderExtension(), FletcherReductionExampleExtension)
 
-  ignore("convert network data to parquet file") {
+  ignore("convert taxi csv files to parquet file") {
+
+    val codec = "uncompressed"
+
+    val spark = SparkSession
+      .builder()
+      .appName(this.styleName)
+      .config("spark.master", "local")
+      .getOrCreate()
 
     //write it as uncompressed file
-    spark.conf.set("spark.sql.parquet.compression.codec", value = "uncompressed")
-
-    // CSV file can be downloaded here: https://www.kaggle.com/jsrojas/ip-network-traffic-flows-labeled-with-87-apps
-    // Adapt then the path to this file
+    spark.conf.set("spark.sql.parquet.compression.codec", codec)
 
     spark.read
       .options(Map("header" -> "true", "inferSchema" -> "true")) //inferSchema is an expensive operation, but because it's just converted once we don't care
-      .csv("/Users/fabian/Downloads/Dataset-Unicauca-Version2-87Atts.csv")
-      .select("`Flow.ID`", "`Flow.Duration`")
+      .csv("/path/to/data/*.csv")
       .repartition(1) //we want to have everything in 1 file
-      //      .limit(100000) OPTIONAL
-      .write.parquet("../data/network-traffic")
+      .write.parquet(s"../data/taxi-$codec")
+
+    spark.close()
   }
 
   test("filter on regex and sum up int column") {
 
-    val query =
-      """ SELECT cast(`Flow.Duration` as bigint) as `Flow.Duration`
-        | FROM parquet.`../data/network-traffic-100000.parquet`
-        | WHERE `Flow.ID` rlike '.*443.*' """.stripMargin
+    //set batch size
+    spark.conf.set("spark.sql.inMemoryColumnarStorage.batchSize", 64000)
 
-    val sqlDF = spark.sql(query).agg("`Flow.Duration`" -> "sum")
+    val query =
+      """ SELECT cast(`trip_seconds` as bigint) as `trip_seconds`
+        | FROM parquet.`../data/taxi-uncompressed-10000.parquet`
+        | WHERE `company` rlike '.*Taxi.*' """.stripMargin
+
+    val sqlDF = spark.sql(query).agg("`trip_seconds`" -> "sum")
 
     assert(sqlDF.queryExecution.executedPlan.find(_.isInstanceOf[NativeParquetSourceScanExec]).isDefined)
     assert(sqlDF.queryExecution.executedPlan.find(_.isInstanceOf[FletcherReductionExampleExec]).isDefined)
