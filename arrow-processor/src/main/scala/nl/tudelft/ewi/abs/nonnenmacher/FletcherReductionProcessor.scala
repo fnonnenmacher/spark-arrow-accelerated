@@ -9,8 +9,9 @@ import org.apache.arrow.vector.{VectorSchemaRoot, VectorUnloader}
 
 import scala.collection.JavaConverters._
 
-class FletcherReductionProcessor(schema: Schema) extends ClosableFunction[VectorSchemaRoot,Long]{
+class FletcherReductionProcessor(schema: Schema) extends ClosableFunction[VectorSchemaRoot, Long] {
 
+  private var isClosed = false
   private val procId: Long = {
     NativeLibraryLoader.load()
     val schemaAsBytes = ArrowTypeHelper.arrowSchemaToProtobuf(schema).toByteArray
@@ -28,7 +29,7 @@ class FletcherReductionProcessor(schema: Schema) extends ClosableFunction[Vector
 
   @native private def reduce(procId: Long, rowNumbers: Int, inBufAddrs: Array[Long], inBufSized: Array[Long]): Long;
 
-  @native private def close(procId: Long) :Unit;
+  @native private def close(procId: Long): Unit;
 
   private case class BufferDescriptor(root: VectorSchemaRoot) {
     def close(): Any = recordBatch.close();
@@ -40,6 +41,9 @@ class FletcherReductionProcessor(schema: Schema) extends ClosableFunction[Vector
   }
 
   override def close(): Unit = {
-    close(procId)
+    if (!isClosed) {
+      isClosed = true
+      close(procId)
+    }
   }
 }

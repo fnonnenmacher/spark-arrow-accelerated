@@ -3,6 +3,7 @@ package org.apache.spark.sql
 import nl.tudelft.ewi.abs.nonnenmacher.utils.StartStopMeasurment
 import org.apache.arrow.gandiva.evaluator.SelectionVector
 import org.apache.arrow.vector.VectorSchemaRoot
+import org.apache.spark.TaskContext
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.VectorSchemaRootUtil.toBatch
 import org.apache.spark.sql.catalyst.InternalRow
@@ -27,7 +28,7 @@ object ArrowColumnarConversionRule extends ColumnarRule {
 }
 
 object ArrowColumnarExtension extends (SparkSessionExtensions => Unit) {
-  override def apply(e: SparkSessionExtensions):Unit = {
+  override def apply(e: SparkSessionExtensions): Unit = {
     e.injectColumnar(_ => ArrowColumnarConversionRule)
   }
 }
@@ -61,6 +62,11 @@ class RowToArrowColumnarExec(override val child: SparkPlan) extends RowToColumna
       val arrowSchema = ArrowUtils.toArrowSchema(schema, conf.sessionLocalTimeZone)
       val root = VectorSchemaRoot.create(arrowSchema, allocator)
       val arrowWriter = ArrowWriter.create(root)
+
+      TaskContext.get().addTaskCompletionListener[Unit] { _ =>
+        root.close()
+        allocator.close()
+      }
 
       new Iterator[ColumnarBatch] {
 

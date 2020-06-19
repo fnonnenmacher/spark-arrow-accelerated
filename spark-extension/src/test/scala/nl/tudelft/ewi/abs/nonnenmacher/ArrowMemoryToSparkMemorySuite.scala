@@ -28,5 +28,7 @@ class ArrowMemoryToSparkMemorySuite extends FunSuite with SparkSessionGenerator 
     assert(sqlDF.queryExecution.executedPlan.find(_.isInstanceOf[MeasureColumnarProcessingExec]).isDefined)
 
     println(sqlDF.first())
+
+    assertArrowMemoryIsFreed()
   }
 }

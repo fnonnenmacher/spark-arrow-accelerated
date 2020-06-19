@@ -57,5 +57,12 @@ class CheckGandivaWorksSuite extends FunSuite {
     assert(outVector.get(1) == 22)
     assert(outVector.get(2) == 33)
     println(outVector.get(0))
+
+    root.close()
+    recordBatch.close()
+    outVector.close()
+    eval.close()
+
+    assert(GlobalAllocator.getAllocatedMemory() == 0)
   }
 }

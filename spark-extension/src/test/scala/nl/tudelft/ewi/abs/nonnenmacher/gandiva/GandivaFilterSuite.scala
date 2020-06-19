@@ -39,12 +39,7 @@ class GandivaFilterSuite extends FunSuite with BeforeAndAfterEach with SparkSess
     //Verify the expected results are correct
     val results: Array[Row] = res.collect();
     assert(results.length == 7)
-  }
 
-  // Close and delete the temp file
-  override def afterEach() {
-    //Check that all previously allocated memory is released
-    assert(ArrowUtils.rootAllocator.getAllocatedMemory == 0)
-    assert(GlobalAllocator.getAllocatedMemory == 0)
+    assertArrowMemoryIsFreed()
   }
 }

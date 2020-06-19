@@ -1,6 +1,5 @@
 package nl.tudelft.ewi.abs.nonnenmacher.gandiva
 
-import io.netty.buffer.ArrowBuf
 import nl.tudelft.ewi.abs.nonnenmacher.utils.AutoCloseProcessingHelper._
 import nl.tudelft.ewi.abs.nonnenmacher.utils.ClosableFunction
 import org.apache.arrow.gandiva.evaluator.{Projector, SelectionVector}
@@ -9,6 +8,7 @@ import org.apache.arrow.gandiva.ipc.GandivaTypes.SelectionVectorType
 import org.apache.arrow.memory.BufferAllocator
 import org.apache.arrow.vector.types.pojo.Field
 import org.apache.arrow.vector.{ValueVector, VectorSchemaRoot, VectorUnloader}
+import org.apache.spark.TaskContext
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.ColumnarWithSelectionVectorSupport
 import org.apache.spark.sql.VectorSchemaRootUtil.{from, toBatch}
@@ -44,21 +44,34 @@ case class GandivaProjectExec(projectList: Seq[NamedExpression], child: SparkPla
     if (childWithSelectionVector) {
       child.asInstanceOf[ColumnarWithSelectionVectorSupport]
         .executeColumnarWithSelection().mapPartitions { batchIter =>
+
+        val gandivaProjection = new GandivaProjection(childWithSelectionVector)
+        TaskContext.get().addTaskCompletionListener[Unit] { _ =>
+          gandivaProjection.close()
+        }
+
         var start: Long = 0
         batchIter
           .map { x => start = System.nanoTime(); x }
           .map(b => (from(b._1), Option(b._2)))
-          .mapAndAutoClose(new GandivaProjection(childWithSelectionVector))
+          .mapAndAutoClose(gandivaProjection)
           .map(toBatch)
           .map { x => time += System.nanoTime() - start; x }
       }
     } else {
       child.executeColumnar().mapPartitions { batchIter =>
+
         var start: Long = 0
+
+        val gandivaProjection = new GandivaProjection(childWithSelectionVector)
+        TaskContext.get().addTaskCompletionListener[Unit] { _ =>
+          gandivaProjection.close()
+        }
+
         batchIter
           .map { x => start = System.nanoTime(); x }
           .map(b => (from(b), Option.empty[SelectionVector]))
-          .mapAndAutoClose(new GandivaProjection(childWithSelectionVector))
+          .mapAndAutoClose(gandivaProjection)
           .map(toBatch)
           .map { x => time += System.nanoTime() - start; x }
       }
@@ -67,6 +80,7 @@ case class GandivaProjectExec(projectList: Seq[NamedExpression], child: SparkPla
 
   private class GandivaProjection(val selectionVectorSupport: Boolean) extends ClosableFunction[(VectorSchemaRoot, Option[SelectionVector]), VectorSchemaRoot] {
 
+    private var isClosed = false;
     private val selectionVectorType = if (selectionVectorSupport) SelectionVectorType.SV_INT16 else SelectionVectorType.SV_NONE
     private val allocator: BufferAllocator = ArrowUtils.rootAllocator.newChildAllocator(s"${this.getClass.getSimpleName}", 0, Long.MaxValue)
     private val treeNodes = projectList.map(GandivaExpressionConverter.transform)
@@ -83,7 +97,7 @@ case class GandivaProjectExec(projectList: Seq[NamedExpression], child: SparkPla
 
       if (selectionVectorSupport) {
         val selectionVector = pair._2.getOrElse {
-          throw new IllegalStateException("Cannot process projection because SelectionVector missing.")
+          throw new IllegalStateException("Cannot process projection because SelectionVector is missing.")
         }
         rootOut.setRowCount(selectionVector.getRecordCount)
         val vectors = rootOut.getFieldVectors.asScala.map(_.asInstanceOf[ValueVector]) //allocate memory for  all field vectors!
@@ -97,11 +111,13 @@ case class GandivaProjectExec(projectList: Seq[NamedExpression], child: SparkPla
       rootOut
     }
 
-
     override def close(): Unit = {
-      gandivaProjector.close()
-      rootOut.close()
-      allocator.close()
+      if (!isClosed) {
+        isClosed = true
+        gandivaProjector.close()
+        rootOut.close()
+        allocator.close()
+      }
     }
   }
 

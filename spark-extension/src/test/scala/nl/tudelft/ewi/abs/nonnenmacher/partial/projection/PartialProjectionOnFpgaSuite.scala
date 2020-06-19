@@ -60,6 +60,6 @@ class PartialProjectionOnFpgaSuite extends FunSuite with SparkSessionGenerator {
     println("Result: " + results.toSet)
     assert(Set(12, 32, 60, 96, 140, 192).subsetOf(results.toSet))
 
-    spark.close()
+    assertArrowMemoryIsFreed()
   }
 }

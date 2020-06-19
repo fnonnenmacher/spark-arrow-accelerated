@@ -48,5 +48,7 @@ class FletcherReductionExampleSuite extends FunSuite with SparkSessionGenerator 
     // println(sqlDF.queryExecution.executedPlan)
 
     println(sqlDF.first()(0))
+
+    assertArrowMemoryIsFreed()
   }
 }

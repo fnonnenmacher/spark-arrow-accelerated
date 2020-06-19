@@ -7,6 +7,7 @@ import org.apache.arrow.gandiva.evaluator.{Filter, SelectionVector, SelectionVec
 import org.apache.arrow.gandiva.expression.TreeBuilder.makeCondition
 import org.apache.arrow.memory.BufferAllocator
 import org.apache.arrow.vector.VectorSchemaRoot
+import org.apache.spark.TaskContext
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.{Attribute, Expression}
@@ -35,10 +36,15 @@ case class GandivaFilterExec(filterExpression: Expression, child: SparkPlan) ext
 
     child.executeColumnar().mapPartitions { batchIter =>
       var start: Long = 0
+      val gandivaFilter = new GandivaFilter
+
+      TaskContext.get().addTaskCompletionListener[Unit] { _ =>
+        gandivaFilter.close()
+      }
       batchIter
         .map { x => start = System.nanoTime(); x }
         .map(VectorSchemaRootUtil.from)
-        .mapAndAutoClose(new GandivaFilter)
+        .mapAndAutoClose(gandivaFilter)
         .map { case (root, selectionVector) => (VectorSchemaRootUtil.toBatch(root), selectionVector) }
         .map { x => time += System.nanoTime() - start; x }
     }
@@ -46,6 +52,7 @@ case class GandivaFilterExec(filterExpression: Expression, child: SparkPlan) ext
 
   private class GandivaFilter extends ClosableFunction[VectorSchemaRoot, (VectorSchemaRoot, SelectionVector)] {
 
+    private var isClosed = false;
     private val allocator: BufferAllocator = ArrowUtils.rootAllocator.newChildAllocator(s"${this.getClass.getSimpleName}", 0, Long.MaxValue)
     private val gandivaCondition = makeCondition(GandivaExpressionConverter.transform(filterExpression))
     private val gandivaFilter: Filter = Filter.make(ArrowUtils.toArrowSchema(child.schema, conf.sessionLocalTimeZone), gandivaCondition)
@@ -74,9 +81,12 @@ case class GandivaFilterExec(filterExpression: Expression, child: SparkPlan) ext
     }
 
     override def close(): Unit = {
-      gandivaFilter.close()
-      selectionVector.foreach(_.getBuffer.close())
-      allocator.close()
+      if (!isClosed) {
+        isClosed = true
+        gandivaFilter.close()
+        selectionVector.foreach(_.getBuffer.close())
+        allocator.close()
+      }
     }
   }
 

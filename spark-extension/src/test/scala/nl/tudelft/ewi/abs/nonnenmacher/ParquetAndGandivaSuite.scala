@@ -49,8 +49,8 @@ class ParquetAndGandivaSuite extends FunSuite with SparkSessionGenerator {
     val sqlDF = spark.sql(s"SELECT `x` + `N2x` + `N3x` AS sum FROM parquet.`../data/5-million-int-triples-snappy.parquet`")
       .agg("sum" -> "max")
 
-//    println("Executed Plan:")
-//    println(sqlDF.queryExecution.executedPlan)
+    //    println("Executed Plan:")
+    //    println(sqlDF.queryExecution.executedPlan)
 
     assert(sqlDF.queryExecution.executedPlan.find(_.isInstanceOf[NativeParquetSourceScanExec]).isDefined)
     assert(sqlDF.queryExecution.executedPlan.find(_.isInstanceOf[GandivaProjectExec]).isDefined)
@@ -76,13 +76,15 @@ class ParquetAndGandivaSuite extends FunSuite with SparkSessionGenerator {
         "c2" -> "count",
       )
 
-//    println("Executed Plan:")
-//    println(sqlDF.queryExecution.executedPlan)
+    //    println("Executed Plan:")
+    //    println(sqlDF.queryExecution.executedPlan)
 
     assert(sqlDF.queryExecution.executedPlan.find(_.isInstanceOf[NativeParquetSourceScanExec]).isDefined)
     assert(sqlDF.queryExecution.executedPlan.find(_.isInstanceOf[GandivaProjectExec]).isDefined)
 
     println(sqlDF.collect.head)
+
+    assertArrowMemoryIsFreed()
   }
 
   test("maxOfSumOf10Ints") {
@@ -100,5 +102,7 @@ class ParquetAndGandivaSuite extends FunSuite with SparkSessionGenerator {
 
     val max = sqlDF.collect.head
     println("MAX: " + max)
+
+    assertArrowMemoryIsFreed()
   }
 }

@@ -4,6 +4,7 @@ import nl.tudelft.ewi.abs.nonnenmacher.JNIProcessorFactory
 import nl.tudelft.ewi.abs.nonnenmacher.utils.AutoCloseProcessingHelper._
 import nl.tudelft.ewi.abs.nonnenmacher.utils.ClosableFunction
 import org.apache.arrow.vector.VectorSchemaRoot
+import org.apache.spark.TaskContext
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.VectorSchemaRootUtil
 import org.apache.spark.sql.catalyst.InternalRow
@@ -24,16 +25,22 @@ case class FPGAProjectExec(child: SparkPlan, name: String, outputs: Seq[Attribut
   override protected def doExecuteColumnar(): RDD[ColumnarBatch] = {
 
     child.executeColumnar().mapPartitions(batchIter => {
+      val fpgaProjection = new FPGAProjection
+
+      TaskContext.get().addTaskCompletionListener[Unit] { _ =>
+        fpgaProjection.close()
+      }
+
       batchIter
         .map(VectorSchemaRootUtil.from)
-        .mapAndAutoClose(new PFGAProjection)
+        .mapAndAutoClose(fpgaProjection)
         .map(VectorSchemaRootUtil.toBatch)
     })
-
   }
 
-  private class PFGAProjection extends ClosableFunction[VectorSchemaRoot, VectorSchemaRoot] {
+  private class FPGAProjection extends ClosableFunction[VectorSchemaRoot, VectorSchemaRoot] {
 
+    private var isClosed = false
     private val inputSchema = ArrowUtils.toArrowSchema(child.schema, null) //TODO
     private val outputSchema = ArrowUtils.toArrowSchema(schema, null) //TODO
     private val processor = JNIProcessorFactory.threeIntAddingProcessor(inputSchema, outputSchema);
@@ -43,7 +50,12 @@ case class FPGAProjectExec(child: SparkPlan, name: String, outputs: Seq[Attribut
       processor.apply(root)
     }
 
-    override def close(): Unit = processor.close()
+    override def close(): Unit = {
+      if (!isClosed) {
+        isClosed = true
+        processor.close()
+      }
+    }
   }
 
   override def output: Seq[Attribute] = outputs

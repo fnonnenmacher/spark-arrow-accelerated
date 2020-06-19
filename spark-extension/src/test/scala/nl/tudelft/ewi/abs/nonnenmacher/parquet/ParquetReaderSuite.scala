@@ -1,8 +1,7 @@
 package nl.tudelft.ewi.abs.nonnenmacher.parquet
 
-import nl.tudelft.ewi.abs.nonnenmacher.{GlobalAllocator, SparkSessionGenerator}
-import org.apache.spark.sql.execution.datasources.{NativeParquetReaderExtension, NativeParquetReaderStrategy}
-import org.apache.spark.sql.util.ArrowUtils
+import nl.tudelft.ewi.abs.nonnenmacher.SparkSessionGenerator
+import org.apache.spark.sql.execution.datasources.NativeParquetReaderExtension
 import org.apache.spark.sql.{DataFrame, SparkSession, SparkSessionExtensions}
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
@@ -28,6 +27,8 @@ class ParquetReaderSuite extends FunSuite with BeforeAndAfterEach with SparkSess
 
     spark.range(1e6.toLong).rdd.map(x => (x.toInt, x * x, s"number-$x")).toDF("int-field", "long-field", "string-field")
       .write.parquet("test-example.parquet")
+
+    assertArrowMemoryIsFreed()
   }
 
   test("read from parquet format") {
@@ -46,18 +47,16 @@ class ParquetReaderSuite extends FunSuite with BeforeAndAfterEach with SparkSess
 
     //    println(sqlDF.columns.mkString(", "))
     println(sqlDF.count())
+
+    assertArrowMemoryIsFreed()
   }
 
-  ignore("benchmark"){
+  ignore("benchmark") {
     val max = spark.sql(s"SELECT * " +
       s"FROM parquet.`../data/500million-int-triples-snappy.parquet`")
       .count()
     println(max)
-  }
 
-  override def afterEach() {
-    //Check that all previously allocated memory is released
-    assert(ArrowUtils.rootAllocator.getAllocatedMemory == 0)
-    assert(GlobalAllocator.getAllocatedMemory == 0)
+    assertArrowMemoryIsFreed()
   }
 }  

@@ -74,7 +74,7 @@ library {
             linkTask.get().linkerArgs.add("--std=c++11")
             linkTask.get().toolChain.set(toolChains.withType(Clang)[0])
 
-        } else if (isFamily(FAMILY_UNIX)) {
+        } else {
             compileTask.get().includes("${Jvm.current().javaHome}/include/linux")
         }
 

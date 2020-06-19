@@ -10,7 +10,7 @@ import org.scalatest.{BeforeAndAfterEach, FunSuite}
 
 
 @RunWith(classOf[JUnitRunner])
-class GandivaProjectionSuite extends FunSuite with BeforeAndAfterEach with SparkSessionGenerator {
+class GandivaProjectionSuite extends FunSuite with SparkSessionGenerator {
 
   override def withExtensions: Seq[SparkSessionExtensions => Unit] = Seq(ProjectionOnGandivaExtension, ArrowColumnarExtension)
 
@@ -51,6 +51,8 @@ class GandivaProjectionSuite extends FunSuite with BeforeAndAfterEach with Spark
     assert(results.length == 6)
     println("Result: " + results.toSet)
     assert(Set(12, 32, 60, 96, 140, 192).subsetOf(results.toSet))
+
+    assertArrowMemoryIsFreed()
   }
 
   test("that also a processing of multiple batches (1 million rows) works") {
@@ -65,12 +67,7 @@ class GandivaProjectionSuite extends FunSuite with BeforeAndAfterEach with Spark
 
     df.take(10).foreach(println(_))
     println(df.count())
-  }
 
-  // Close and delete the temp file
-  override def afterEach() {
-    //Check that all previously allocated memory is released
-    assert(ArrowUtils.rootAllocator.getAllocatedMemory == 0)
-    assert(GlobalAllocator.getAllocatedMemory == 0)
+    assertArrowMemoryIsFreed()
   }
 }

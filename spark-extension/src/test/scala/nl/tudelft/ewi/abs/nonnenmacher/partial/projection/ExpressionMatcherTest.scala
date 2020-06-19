@@ -25,13 +25,11 @@ class ExpressionMatcherTest extends FunSuite {
     val attrC = Attr("c")
     val attrD = Attr("d")
 
-
     // verify expressions can be associative different
     assert(vectorMagnitude.findBestReplacementCandidate(Add(Add(attrA, attrB), attrC)).isDefined)
     assert(vectorMagnitude.findBestReplacementCandidate(Add(attrA, Add(attrB, attrC))).isDefined)
     assert(vectorMagnitude.findBestReplacementCandidate(Add(Add(attrA, attrB), Add(attrC, attrD))).isDefined)
 
-    //
     val r = vectorMagnitude.findBestReplacementCandidate(Add(attrA, attrB))
     assert(r.isDefined)
     assert(r.get._2.map.values.toSeq.count(_ == Literal(0)) == 1) //one addition is neutralized neutral
@@ -65,8 +63,5 @@ class ExpressionMatcherTest extends FunSuite {
     print(s"The benefit is ${mapping.benefit}: ")
     mapping.map.map(e => s"  ${e._1}: ${e._2}").toList.sorted.foreach(print(_))
     println('\n')
-
-//    println(vectorMagnitude.replace(expr1, exp, mapping).toString())
-
   }
 }

@@ -2,6 +2,7 @@ package org.apache.spark.sql
 
 import nl.tudelft.ewi.abs.nonnenmacher.FletcherReductionProcessor
 import nl.tudelft.ewi.abs.nonnenmacher.utils.AutoCloseProcessingHelper._
+import org.apache.spark.TaskContext
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.{Attribute, GenericInternalRow}
@@ -18,9 +19,14 @@ case class FletcherReductionExampleExec(out: Seq[Attribute], child: SparkPlan) e
 
       val inputSchema = ArrowUtils.toArrowSchema(child.schema, conf.sessionLocalTimeZone)
 
+      val fletcherReductionProcessor = new FletcherReductionProcessor(inputSchema)
+
+      TaskContext.get().addTaskCompletionListener[Unit] { _ =>
+        fletcherReductionProcessor.close()
+      }
       batches
         .map(VectorSchemaRootUtil.from)
-        .mapAndAutoClose(new FletcherReductionProcessor(inputSchema))
+        .mapAndAutoClose(fletcherReductionProcessor)
         .map(toRow)
     }
   }
