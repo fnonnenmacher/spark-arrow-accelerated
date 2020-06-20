@@ -2,8 +2,7 @@
 
 This repository contains my work/implementation which I do during my Masterthesis at the [Accelerated Big Data Systems of TUDelft](https://www.tudelft.nl/en/eemcs/the-faculty/departments/quantum-computer-engineering/accelerated-big-data-systems/) 
 
-
-> :warning: This project is in a very early stage and currently the goal is to understand the involved technologies. I aim to build a minimal runnable solution at first. Therefor, the code is very volatile and sometimes aiming for a dirty solution.
+> :warning: The goal of this project is to elaborate different technologies and how to integrate them with Spark. I want to understand the technical feasibility of different scenarios and want to figure out which problems appear and need to be solved. Therefore, this code is very volatile and does not always follow best practices.
 
 ## Goal
 
@@ -13,24 +12,29 @@ This repository contains my work/implementation which I do during my Masterthesi
 
 ![Architecture Draft](images/architecture-draft.png)
 
+## Installation of required Software
 
-## Build
+Because of the many involved technologies the installation of the pre-conditions is not trivial. This [installation guide](Installation.md) describes the necessary things to do especially on machines without sudo rights (e.g. on the servers of the research group). Furthermore, if the execution on real FPGAs is not required the [docker image](/docker) used for the CI builds can be used: 
 
-Unfortunately building and executing the project requires some (complex) preconditions. To make things easier I provide a
-[Dockerfile](/docker) which can be used for building the project or as reference for the different steps   
+## Executing the project
 
-1. [Install protobuf](https://github.com/protocolbuffers/protobuf/blob/master/src/README.md) libs and generator 
-2. [Build Appache Arrow](https://arrow.apache.org/docs/developers/cpp/building.html) with the options: 
-    * `DARROW_PARQUET=ON`
-    * `DARROW_GANDIVA=ON` (Requires llvm in version 8)
-    * `DARROW_GANDIVA_JAVA=ON`
-3. Install it from the release dir: `sudo make install`
-4. [Build the Appache Arrow gandiva jar file](https://github.com/apache/arrow/tree/master/java#building-and-running-tests-for-arrow-jni-modules-like-gandiva-and-orc-optional) Pay attention that the parameter `-Darrow.cpp.build.dir` is correct, because only then the gandiva libraries are copied into jar file.
-5. Install [Fletcher runtime](https://github.com/abs-tudelft/fletcher/tree/develop/runtime/cpp) and for the current tests [the Fletcher echo plattform](https://github.com/abs-tudelft/fletcher/tree/develop/platforms/echo/runtime)
-6. Set the following environment variables
-    * `ARROW_ROOT` (Gradle looks for the Gandiva jar file in `$ARROW_ROOT/java/gandiva/target/arrow-gandiva-0.17.0.jar`)
-    * `LOCAL_LIBRARY_PATH` (if different than `/usr/local/lib`)
-7. Run the gradle build (including tests) `./gradlew build`
+The project is setup with [gradle](https://gradle.org/) which allowed me to create a multi-language build. For including locally installed libraries the following env vars can be used:
+
+* `LD_LIBRARY_PATH`: colon separated list of directories to scan for local libraries. Evaluated before the default paths (`/usr/local/lib` and `usr/local/lib64`). E.g. `$WORK/local/lib:$WORK/local/lib64`
+* `ADDITIONAL_INCLUDES`: colon separated list of directories of additional includes e.g. `$WORK/local/include/`
+* `GANDIVA_JAR_DIR`: path to the directory containing the gandiva jar when not on MacOs. E.g. `$WORK/arrow-apache-arrow-0.17.1/java/gandiva/target/`
+
+> Hint: Stop the gradlew daemon './gradlew --stop' to make sure the new environment variables are passed to the gradle process.
+
+Build the project including tests:
+```
+./gradlew build
+```
+
+To run individual tests: 
+```
+./gradlew :spark-extension:test --tests *.FletcherReductionExampleSuite
+```
 
 ## Project structure
 
