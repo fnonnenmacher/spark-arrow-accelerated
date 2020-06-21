@@ -91,7 +91,6 @@ library {
         linkTask.get().lib(findLib("arrow_dataset"))
         linkTask.get().lib(findLib("arrow"))
         linkTask.get().lib(findLib("fletcher"))
-        linkTask.get().lib(findLib("fletcher_echo"))
         linkTask.get().lib(findLib("parquet"))
     }
 }

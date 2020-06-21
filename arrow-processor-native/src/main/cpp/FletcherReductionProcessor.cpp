@@ -35,8 +35,12 @@ long FletcherReductionProcessor::reduce(const std::shared_ptr<arrow::RecordBatch
     // Create a kernel based on the context.
     fletcher::Kernel kernel(context);
 
+    // Reset the kernel.
+    ASSERT_FLETCHER_OK(kernel.Reset());
+
     // Start the kernel.
     ASSERT_FLETCHER_OK(kernel.Start());
+
     // Wait for the kernel to finish.
     ASSERT_FLETCHER_OK(kernel.WaitForFinish());
 

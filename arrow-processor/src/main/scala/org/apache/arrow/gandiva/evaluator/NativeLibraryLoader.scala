@@ -13,7 +13,11 @@ object NativeLibraryLoader {
     System.loadLibrary("arrow")
     System.loadLibrary("parquet")
     System.loadLibrary("arrow_dataset")
-    System.loadLibrary("fletcher_echo")
+
+    val fletcherPlatformEnv = System.getenv("FLETCHER_PLATFORM")
+    val fletcherPlatform = if (fletcherPlatformEnv!= null)  fletcherPlatformEnv else "fletcher_echo"
+
+    System.loadLibrary(fletcherPlatform)
     System.loadLibrary("fletcher")
     System.loadLibrary("arrow-processor-native")
     true

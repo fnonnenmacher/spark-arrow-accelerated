@@ -23,6 +23,7 @@ The project is setup with [gradle](https://gradle.org/) which allowed me to crea
 * `LD_LIBRARY_PATH`: colon separated list of directories to scan for local libraries. Evaluated before the default paths (`/usr/local/lib` and `usr/local/lib64`). E.g. `$WORK/local/lib:$WORK/local/lib64`
 * `ADDITIONAL_INCLUDES`: colon separated list of directories of additional includes e.g. `$WORK/local/include/`
 * `GANDIVA_JAR_DIR`: path to the directory containing the gandiva jar when not on MacOs. E.g. `$WORK/arrow-apache-arrow-0.17.1/java/gandiva/target/`
+* `FLETCHER_PLATFORM`: fletcher platfrom which should be loaded e.g. `fletcher_snap`
 
 > Hint: Stop the gradlew daemon './gradlew --stop' to make sure the new environment variables are passed to the gradle process.
 
