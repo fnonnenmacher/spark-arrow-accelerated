@@ -3,6 +3,8 @@ package nl.tudelft.ewi.abs.nonnenmacher.utils
 import nl.tudelft.ewi.abs.nonnenmacher.GlobalAllocator
 import org.apache.arrow.memory.BufferAllocator
 import org.apache.arrow.vector._
+import org.apache.arrow.vector.types.Types.MinorType
+import org.apache.arrow.vector.types.pojo.FieldType
 import org.apache.arrow.vector.util.Text
 
 import scala.collection.JavaConverters._
@@ -54,13 +56,13 @@ case class LongVector(override val name: String, override val values: Seq[Long])
 }
 
 case class IntegerVector(override val name: String, override val values: Seq[Int]) extends Vector[Int, IntVector](name, values) {
-  override protected def initVector(name: String): IntVector = new IntVector(name, ArrowVectorBuilder.allocator);
+  override protected def initVector(name: String): IntVector = new IntVector(name, new FieldType(false, MinorType.INT.getType, null), ArrowVectorBuilder.allocator)
 
   override protected def setValue(vector: IntVector, index: Int, value: Int): Unit = vector.set(index, value)
 }
 
 case class StringVector(override val name: String, override val values: Seq[String]) extends Vector[String, VarCharVector](name, values) {
-  override protected def initVector(name: String): VarCharVector = new VarCharVector(name, ArrowVectorBuilder.allocator);
+  override protected def initVector(name: String): VarCharVector = new VarCharVector(name, new FieldType(false, MinorType.VARCHAR.getType, null), ArrowVectorBuilder.allocator);
 
   override protected def setValue(vector: VarCharVector, index: Int, value: String): Unit = vector.setSafe(index, new Text(value))
 }

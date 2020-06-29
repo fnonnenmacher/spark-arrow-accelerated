@@ -37,6 +37,7 @@ libraryPaths.addAll([file("${project(':arrow-processor-native').buildDir}/lib/ma
 
 test {
     systemProperty "java.library.path", libraryPaths.join(':')
+    systemProperty "io.netty.allocator.directMemoryCacheAlignment", "64"
 }
 
 def metricsFile = "${project.buildDir}/reports/jmh/metrics.csv"

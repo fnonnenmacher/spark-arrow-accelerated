@@ -14,10 +14,15 @@ object NativeLibraryLoader {
     System.loadLibrary("parquet")
     System.loadLibrary("arrow_dataset")
 
-    val fletcherPlatformEnv = System.getenv("FLETCHER_PLATFORM")
-    val fletcherPlatform = if (fletcherPlatformEnv!= null)  fletcherPlatformEnv else "fletcher_echo"
+    System.getenv("FLETCHER_PLATFORM") match {
+      case null | "ECHO" => System.loadLibrary("fletcher_echo")
+      case "SNAP" => {
+        System.loadLibrary("ocxl")
+        System.loadLibrary("fletcher_snap")
+      }
+      case other => throw new Exception(s"Fletcher platform '$other' not supported.")
+    }
 
-    System.loadLibrary(fletcherPlatform)
     System.loadLibrary("fletcher")
     System.loadLibrary("arrow-processor-native")
     true

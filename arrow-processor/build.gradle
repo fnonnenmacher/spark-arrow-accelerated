@@ -1,6 +1,4 @@
-import static org.apache.tools.ant.taskdefs.condition.Os.FAMILY_MAC
-import static org.apache.tools.ant.taskdefs.condition.Os.isFamily
-import static org.apache.tools.ant.taskdefs.condition.Os.isArch
+import static org.apache.tools.ant.taskdefs.condition.Os.*
 
 plugins {
     id 'scala'
@@ -39,11 +37,11 @@ dependencies {
         // transitive dependencies of arrow-gandiva https://mvnrepository.com/artifact/org.apache.arrow.gandiva/arrow-gandiva/0.17.0
         compile "com.google.guava:guava:23.0"
 
-        if (isArch("ppc64le")){
+        if (isArch("ppc64le")) {
             // the protobuf version 2.5.0 is not compatible with power systems
             // therefore we changed the version manually and have to use here the same
             compile "com.google.protobuf:protobuf-java:3.7.1"
-        }else {
+        } else {
             compile "com.google.protobuf:protobuf-java:2.5.0"
         }
         compile "org.apache.arrow:arrow-memory:0.17.0"
@@ -59,11 +57,12 @@ dependencies {
 
 def libraryPaths = System.getenv("LD_LIBRARY_PATH")?.split(':')?.toList() ?: []
 libraryPaths.addAll([file("${project(':arrow-processor-native').buildDir}/lib/main/debug").absolutePath,
-                    "/usr/local/lib64",
-                    "/usr/local/lib"])
+                     "/usr/local/lib64",
+                     "/usr/local/lib"])
 
 test {
     systemProperty "java.library.path", libraryPaths.join(':')
+    systemProperty "io.netty.allocator.directMemoryCacheAlignment", "64"
 }
 
 def nativeClasses = ['nl.tudelft.ewi.abs.nonnenmacher.JNIProcessor',
