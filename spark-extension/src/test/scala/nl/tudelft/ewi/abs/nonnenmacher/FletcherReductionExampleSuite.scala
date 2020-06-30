@@ -55,11 +55,11 @@ class FletcherReductionExampleSuite extends FunSuite with SparkSessionGenerator 
     spark.conf.set("spark.sql.inMemoryColumnarStorage.batchSize", 500)
 
     val query =
-      """ SELECT cast(`number` as bigint) as `number`
+      """ SELECT SUM(`number`)
         | FROM parquet.`../data/taxi-uncompressed-10000.parquet`
         | WHERE `string` rlike 'Blue Ribbon Taxi Association Inc.' """.stripMargin
 
-    val sqlDF = spark.sql(query).agg("`number`" -> "sum")
+    val sqlDF = spark.sql(query)
 
     assert(sqlDF.queryExecution.executedPlan.find(_.isInstanceOf[NativeParquetSourceScanExec]).isDefined)
     assert(sqlDF.queryExecution.executedPlan.find(_.isInstanceOf[FletcherReductionExampleExec]).isDefined)

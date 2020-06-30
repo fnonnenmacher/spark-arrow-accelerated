@@ -5,8 +5,10 @@ import nl.tudelft.ewi.abs.nonnenmacher.utils.AutoCloseProcessingHelper._
 import org.apache.arrow.vector.types.pojo.Schema
 import org.apache.spark.TaskContext
 import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.VectorSchemaRootUtil.{from, toBatch}
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.{Attribute, GenericInternalRow}
+import org.apache.spark.sql.execution.metric.{SQLMetric, SQLMetrics}
 import org.apache.spark.sql.execution.{SparkPlan, UnaryExecNode}
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.util.ArrowUtils.toArrowField
@@ -16,7 +18,7 @@ import scala.collection.JavaConverters._
 case class FletcherReductionExampleExec(out: Seq[Attribute], child: SparkPlan) extends UnaryExecNode {
 
   override def doExecute(): RDD[InternalRow] = {
-    //    val aggregationTime = longMetric("aggregationTime")
+    val aggregationTime = longMetric("aggregationTime")
     //    val processing = longMetric("processing")
 
     child.executeColumnar().mapPartitions { batches =>
@@ -28,10 +30,14 @@ case class FletcherReductionExampleExec(out: Seq[Attribute], child: SparkPlan) e
       TaskContext.get().addTaskCompletionListener[Unit] { _ =>
         fletcherReductionProcessor.close()
       }
+
+      var start: Long = 0
       batches
+        .map { x => start = System.nanoTime(); x }
         .map(VectorSchemaRootUtil.from)
         .mapAndAutoClose(fletcherReductionProcessor)
         .map(toRow)
+        .map { x => aggregationTime += System.nanoTime() - start; x }
     }
   }
 
@@ -48,4 +54,7 @@ case class FletcherReductionExampleExec(out: Seq[Attribute], child: SparkPlan) e
     }.asJava)
   }
 
+  override lazy val metrics: Map[String, SQLMetric] = Map(
+    "aggregationTime" -> SQLMetrics.createNanoTimingMetric(sparkContext, "time aggregating in [ns]"),
+  )
 }

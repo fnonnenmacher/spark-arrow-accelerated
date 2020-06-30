@@ -17,8 +17,8 @@ import org.openjdk.jmh.infra.{BenchmarkParams, Blackhole}
 @Fork(1)
 class MeasureDifferentMemoryAccessBenchmark {
 
-  @Benchmark
-  def acces3Fields(blackhole: Blackhole, myState: MyState): Unit = {
+  //@Benchmark
+  def access3Fields(blackhole: Blackhole, myState: MyState): Unit = {
     val row = myState.spark.sql(s"SELECT `x` + `N2x` + `N3x` AS sum FROM parquet.`$rootDir/data/${myState.numElementsInMillion}-million-int-triples-snappy.parquet`")
       .agg("sum" -> "max").first()
     blackhole.consume(row)
@@ -60,8 +60,6 @@ object MeasureDifferentMemoryAccessBenchmark {
     @TearDown(Level.Trial)
     def doTearDown(params: BenchmarkParams): Unit = {
       writeResults(params)
-      //      println("DONE! You have 3 min to check http://192.168.0.102:4040/SQL/")
-      //      Thread.sleep(3* 60*1000)
       spark.close()
     }
   }

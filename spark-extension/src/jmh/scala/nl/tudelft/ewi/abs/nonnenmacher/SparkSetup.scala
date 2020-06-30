@@ -2,6 +2,7 @@ package nl.tudelft.ewi.abs.nonnenmacher
 
 import java.io.{FileWriter, PrintWriter}
 
+import nl.tudelft.ewi.abs.nonnenmacher.fletcher.example.FletcherReductionExampleExtension
 import nl.tudelft.ewi.abs.nonnenmacher.gandiva.{GandivaFilterExec, GandivaProjectExec, ProjectionOnGandivaExtension}
 import nl.tudelft.ewi.abs.nonnenmacher.parquet.NativeParquetSourceScanExec
 import org.apache.spark.sql.execution.datasources.{NativeParquetReaderExtension, NativeParquetReaderStrategy}
@@ -23,6 +24,7 @@ object SparkSetup {
   final val PARQUET_AND_GANDIVA = "PARQUET_AND_GANDIVA"
   final val WITH_MAX_AGGREGATION = "WITH_MAX_AGGREGATION"
   final val PARQUET_AND_MEMORY_CONVERSION = "PARQUET_AND_MEMORY_CONVERSION"
+  final val FLETCHER_EXAMPLE = "FLETCHER_EXAMPLE"
 
   private def extensionOf(s: String): Seq[SparkSessionExtensions => Unit] = s match {
     case PLAIN => Seq(MeasureColumnarProcessingExtension)
@@ -38,6 +40,8 @@ object SparkSetup {
         DirtyMaxAggregationExtension)
     case PARQUET_AND_MEMORY_CONVERSION =>
       Seq(NativeParquetReaderExtension(), ArrowMemoryToSparkMemoryExtension)
+    case FLETCHER_EXAMPLE =>
+      Seq(NativeParquetReaderExtension(), FletcherReductionExampleExtension)
     case _ => throw new IllegalArgumentException(s"Spark configuration $s not defined!")
   }
 
@@ -78,6 +82,7 @@ object SparkSetup {
           case fs@FileSourceScanExec(_, _, _, _, _, _, _) => fs.metrics.get("scanTime").foreach(m => scanTime = m.value)
           case ns@NativeParquetSourceScanExec(_, _, _, _, _, _, _) => ns.metrics.get("scanTime").foreach(m => scanTime = (m.value / MILLION))
           case g@GandivaFilterExec(_, _) => g.metrics.get("time").foreach(m => gandiva += m.value / MILLION)
+          case g@FletcherReductionExampleExec(_, _) => g.metrics.get("aggregationTime").foreach(m => aggregationTime += m.value / MILLION)
           case g@GandivaProjectExec(_, _) => g.metrics.get("time").foreach(m => gandiva += m.value / MILLION)
           case g@ColumnarToRowMaxAggregatorExec(_) => {
             g.metrics.get("aggregationTime").foreach(m => aggregationTime = m.value / MILLION)
