@@ -3,6 +3,7 @@ package nl.tudelft.ewi.abs.nonnenmacher
 import nl.tudelft.ewi.abs.nonnenmacher.fletcher.example.FletcherReductionExampleExtension
 import nl.tudelft.ewi.abs.nonnenmacher.parquet.NativeParquetSourceScanExec
 import org.apache.spark.sql.execution.datasources.NativeParquetReaderExtension
+import org.apache.spark.sql.types._
 import org.apache.spark.sql.{FletcherReductionExampleExec, SparkSession, SparkSessionExtensions}
 import org.junit.runner.RunWith
 import org.scalatest.FunSuite
@@ -27,11 +28,23 @@ class FletcherReductionExampleSuite extends FunSuite with SparkSessionGenerator 
     //write it as uncompressed file
     spark.conf.set("spark.sql.parquet.compression.codec", codec)
 
-    spark.read
-      .options(Map("header" -> "true", "inferSchema" -> "true")) //inferSchema is an expensive operation, but because it's just converted once we don't care
-      .csv("/path/to/data/*.csv")
+    val schema = new StructType()
+      .add(StructField("string", StringType, nullable = false))
+      .add(StructField("number", LongType,  nullable = false))
+
+    val df = spark.read
+      .options(Map("header" -> "true")) //inferSchema is an expensive operation, but because it's just converted once we don't care
+      .schema(schema)
+      .csv("/Users/fabian/Downloads/taxi-2013.csv")
       .repartition(1) //we want to have everything in 1 file
-      .write.parquet(s"../data/taxi-$codec")
+      .limit(10000)
+
+    // When reading, Spark ignores the nullable property
+    // with this weird conversion we enforce it!
+    val df2 = df.sqlContext.createDataFrame(df.rdd, schema)
+
+    df2.write
+      .parquet(s"../data/taxi-$codec-10000")
 
     spark.close()
   }
@@ -39,14 +52,14 @@ class FletcherReductionExampleSuite extends FunSuite with SparkSessionGenerator 
   test("filter on regex and sum up int column") {
 
     //set batch size
-    spark.conf.set("spark.sql.inMemoryColumnarStorage.batchSize", 64000)
+    spark.conf.set("spark.sql.inMemoryColumnarStorage.batchSize", 500)
 
     val query =
-      """ SELECT cast(`trip_seconds` as bigint) as `trip_seconds`
+      """ SELECT cast(`number` as bigint) as `number`
         | FROM parquet.`../data/taxi-uncompressed-10000.parquet`
-        | WHERE `company` rlike '.*Taxi.*' """.stripMargin
+        | WHERE `string` rlike 'Blue Ribbon Taxi Association Inc.' """.stripMargin
 
-    val sqlDF = spark.sql(query).agg("`trip_seconds`" -> "sum")
+    val sqlDF = spark.sql(query).agg("`number`" -> "sum")
 
     assert(sqlDF.queryExecution.executedPlan.find(_.isInstanceOf[NativeParquetSourceScanExec]).isDefined)
     assert(sqlDF.queryExecution.executedPlan.find(_.isInstanceOf[FletcherReductionExampleExec]).isDefined)
@@ -55,7 +68,7 @@ class FletcherReductionExampleSuite extends FunSuite with SparkSessionGenerator 
     // println("Executed Plan:")
     // println(sqlDF.queryExecution.executedPlan)
 
-    println(sqlDF.first()(0))
+    assert(sqlDF.first()(0) == 727020)
 
     assertArrowMemoryIsFreed()
   }

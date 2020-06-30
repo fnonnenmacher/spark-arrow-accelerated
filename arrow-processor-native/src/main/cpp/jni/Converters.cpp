@@ -67,14 +67,21 @@ Status make_record_batch_with_buf_addrs(std::shared_ptr<arrow::Schema> schema, i
         auto field = schema->field(i);
         std::vector<std::shared_ptr<arrow::Buffer>> buffers;
 
+        bool nullable = field->nullable();
+
         if (buf_idx >= in_bufs_len) {
             return Status::Invalid("insufficient number of in_buf_addrs");
         }
-        jlong validity_addr = in_buf_addrs[buf_idx++];
-        jlong validity_size = in_buf_sizes[sz_idx++];
-        auto validity = std::shared_ptr<arrow::Buffer>(
-                new arrow::Buffer(reinterpret_cast<uint8_t *>(validity_addr), validity_size));
-        buffers.push_back(validity);
+
+        if (!nullable) {
+            jlong validity_addr = in_buf_addrs[buf_idx++];
+            jlong validity_size = in_buf_sizes[sz_idx++];
+            auto validity = std::shared_ptr<arrow::Buffer>(
+                    new arrow::Buffer(reinterpret_cast<uint8_t *>(validity_addr), validity_size));
+            buffers.push_back(validity);
+        } else { //if Field is not nullable ignore validity buffer
+            buffers.push_back(nullptr);
+        }
 
         if (buf_idx >= in_bufs_len) {
             return Status::Invalid("insufficient number of in_buf_addrs");
@@ -98,7 +105,13 @@ Status make_record_batch_with_buf_addrs(std::shared_ptr<arrow::Schema> schema, i
             buffers.push_back(offsets);
         }
 
-        auto array_data = arrow::ArrayData::Make(field->type(), num_rows, std::move(buffers));
+        std::shared_ptr<arrow::ArrayData> array_data;
+        if (nullable) {
+            array_data = arrow::ArrayData::Make(field->type(), num_rows, std::move(buffers));
+        } else {
+            array_data = arrow::ArrayData::Make(field->type(), num_rows, std::move(buffers), 0);
+        }
+
         columns.push_back(array_data);
     }
     *batch = arrow::RecordBatch::Make(schema, num_rows, columns);
@@ -121,7 +134,7 @@ Status copy_record_batch_ito_buffers(JNIEnv *env, jobject jexpander,
         auto field = schema->field(i);
         auto column = recordBatch->column(i);
 
-        ASSERT(buf_idx <=out_bufs_len, "insufficient number of in_buf_addrs");
+        ASSERT(buf_idx <= out_bufs_len, "insufficient number of in_buf_addrs");
 
         // Copy validity buffer
         auto validity_buffer = column->data()->buffers[0];
@@ -131,14 +144,14 @@ Status copy_record_batch_ito_buffers(JNIEnv *env, jobject jexpander,
 
         } else {
             ASSERT(validity_buffer->size() <= out_buf_sizes[buf_idx],
-                    "Validity buffer of field '" + field->name() +
-                    "' cannot be copied, because it has the wrong size.");
+                   "Validity buffer of field '" + field->name() +
+                   "' cannot be copied, because it has the wrong size.");
 
             memcpy((void *) out_buf_addrs[buf_idx], (void *) validity_buffer->address(), validity_buffer->size());
         }
         buf_idx++;
 
-        ASSERT(buf_idx <=out_bufs_len, "insufficient number of in_buf_addrs");
+        ASSERT(buf_idx <= out_bufs_len, "insufficient number of in_buf_addrs");
 
         // copy value buffer
         auto value_buffer = column->data()->buffers[1];

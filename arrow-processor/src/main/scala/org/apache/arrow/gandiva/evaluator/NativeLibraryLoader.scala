@@ -18,7 +18,7 @@ object NativeLibraryLoader {
       case null | "ECHO" => System.loadLibrary("fletcher_echo")
       case "SNAP" => {
         System.loadLibrary("ocxl")
-        System.loadLibrary("fletcher_snap")
+        System.load("fletcher_snap")
       }
       case other => throw new Exception(s"Fletcher platform '$other' not supported.")
     }

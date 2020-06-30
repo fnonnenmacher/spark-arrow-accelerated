@@ -17,7 +17,6 @@ class MaxIntAggregator {
     r
   }
 
-
   @native private def agg(rowNumbers: Int, inBufAddrs: Array[Long], inBufSized: Array[Long]): Int;
 
   private case class BufferDescriptor(root: VectorSchemaRoot) {

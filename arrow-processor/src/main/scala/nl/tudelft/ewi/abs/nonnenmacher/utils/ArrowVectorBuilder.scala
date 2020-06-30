@@ -50,7 +50,7 @@ case class ByteVector(override val name: String, override val values: Seq[Byte])
 }
 
 case class LongVector(override val name: String, override val values: Seq[Long]) extends Vector[Long, BigIntVector](name, values) {
-  override protected def initVector(name: String): BigIntVector = new BigIntVector(name, ArrowVectorBuilder.allocator);
+  override protected def initVector(name: String): BigIntVector = new BigIntVector(name, new FieldType(false, MinorType.BIGINT.getType, null), ArrowVectorBuilder.allocator);
 
   override protected def setValue(vector: BigIntVector, index: Int, value: Long): Unit = vector.set(index, value)
 }

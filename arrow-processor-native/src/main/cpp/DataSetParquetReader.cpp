@@ -41,6 +41,8 @@ DataSetParquetReader::DataSetParquetReader(const std::shared_ptr<arrow::MemoryPo
                                                       filesystem,
                                                       {file_info}).ValueOrDie();
 
+
+
     std::shared_ptr<ScanContext> ctx_ = std::make_shared<ScanContext>();
     ctx_->pool = memory_pool.get();
 
@@ -103,6 +105,11 @@ JNIEXPORT jlong JNICALL Java_nl_tudelft_ewi_abs_nonnenmacher_NativeParquetReader
 JNIEXPORT jboolean JNICALL Java_nl_tudelft_ewi_abs_nonnenmacher_NativeParquetReader_readNext
         (JNIEnv *env, jobject, jlong process_ptr, jlongArray jarr_vector_lengths, jlongArray jarr_vector_null_counts,
          jlongArray jarr_buf_addrs) {
+
+
+
+
+
 
 
     DataSetParquetReader *datasetParquetReader = (DataSetParquetReader *) process_ptr;

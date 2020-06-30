@@ -1,6 +1,7 @@
 package nl.tudelft.ewi.abs.nonnenmacher
 
 import nl.tudelft.ewi.abs.nonnenmacher.utils.{ArrowVectorBuilder, IntegerVector}
+import org.apache.arrow.vector.IntVector
 import org.junit.runner.RunWith
 import org.scalatest.FunSuite
 import org.scalatest.junit.JUnitRunner
@@ -15,7 +16,7 @@ class MaxIntAggregatorTest extends FunSuite {
 
     val res = aggregator.aggregate(root)
 
-    assert(res == 55L)
+    assert(res == 55)
 
     root.close()
 

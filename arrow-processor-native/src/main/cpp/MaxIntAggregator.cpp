@@ -18,7 +18,7 @@ JNIEXPORT jint JNICALL Java_nl_tudelft_ewi_abs_nonnenmacher_MaxIntAggregator_agg
 
     //TODO: HARD coded schema
     std::vector<std::shared_ptr<arrow::Field>> schema_vector = {
-            arrow::field("out", arrow::int32())};
+            arrow::field("out", arrow::int32(), false)};
     auto schema = std::make_shared<arrow::Schema>(schema_vector);
 
     std::shared_ptr<arrow::RecordBatch> batch;

@@ -8,6 +8,7 @@
 #include "jni/ProtobufSchemaDeserializer.h"
 
 #include <utility>
+#include <unistd.h>
 
 FletcherReductionProcessor::FletcherReductionProcessor(std::shared_ptr<arrow::Schema> input_schema) {
     schema = std::move(input_schema);
@@ -17,6 +18,29 @@ FletcherReductionProcessor::FletcherReductionProcessor(std::shared_ptr<arrow::Sc
 
     // Initialize the platform.
     ASSERT_FLETCHER_OK(platform->Init());
+
+    //assert Schema is OK
+    //TODO: 1 column string, the other long, both not null
+//    std::shared_ptr<arrow::Field> string_field = schema->field(0);
+//    if (string_field->type()->Equals(arrow::StringType()) && !string_field->nullable())
+
+}
+
+long trivialCpuVersion(const std::shared_ptr<arrow::RecordBatch> &record_batch) {
+
+    auto strings = std::static_pointer_cast<arrow::StringArray>(record_batch->column(0));
+    auto numbers = std::static_pointer_cast<arrow::Int64Array>(record_batch->column(1));
+
+    const int64_t* raw_numbers = numbers->raw_values();
+
+    int64_t sum = 0;
+    for (int i = 0; i < record_batch->num_rows(); i++) {
+
+        if (strings->GetString(i) == "Blue Ribbon Taxi Association Inc.") {
+            sum += raw_numbers[i];
+        }
+    }
+    return sum;
 }
 
 long FletcherReductionProcessor::reduce(const std::shared_ptr<arrow::RecordBatch> &record_batch) {
@@ -50,10 +74,15 @@ long FletcherReductionProcessor::reduce(const std::shared_ptr<arrow::RecordBatch
     // Obtain the return value.
     ASSERT_FLETCHER_OK(kernel.GetReturn(&return_value_0, &return_value_1));
 
-    //TODO: interpret return value correctly
-    std::cout << "RESULT returned from Fletcher: " << *reinterpret_cast<int32_t *>(&return_value_0) << std::endl;
+    long result = *reinterpret_cast<int64_t *>(&return_value_0);
 
-    return 13L;
+    std::cout << "RESULT returned from Fletcher: " << *reinterpret_cast<int64_t *>(&return_value_0) << std::endl;
+
+    //The echo platform does not return a proper value -> fallback to cpu impl
+    if (platform->name() == "echo") {
+        return trivialCpuVersion(record_batch);
+    }
+    return result;
 }
 
 JNIEXPORT jlong JNICALL Java_nl_tudelft_ewi_abs_nonnenmacher_FletcherReductionProcessor_initFletcherReductionProcessor
@@ -66,6 +95,8 @@ JNIEXPORT jlong JNICALL Java_nl_tudelft_ewi_abs_nonnenmacher_FletcherReductionPr
 
     return (jlong) new FletcherReductionProcessor(schema);
 }
+
+
 
 /*
  * Class:     nl_tudelft_ewi_abs_nonnenmacher_FletcherReductionProcessor
