@@ -1,10 +1,11 @@
 package org.apache.spark.sql
 
-import nl.tudelft.ewi.abs.nonnenmacher.TimeMeasuringIterator
+import nl.tudelft.ewi.abs.nonnenmacher.columnar.VectorSchemaRootUtil
+import nl.tudelft.ewi.abs.nonnenmacher.measuring.TimeMeasuringIterator
 import org.apache.arrow.vector.IntVector
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.InternalRow
-import org.apache.spark.sql.catalyst.expressions.{Attribute, UnsafeProjection}
+import org.apache.spark.sql.catalyst.expressions.Attribute
 import org.apache.spark.sql.catalyst.rules.Rule
 import org.apache.spark.sql.execution.metric.{SQLMetric, SQLMetrics}
 import org.apache.spark.sql.execution.vectorized.OnHeapColumnVector

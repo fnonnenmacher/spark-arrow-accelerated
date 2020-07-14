@@ -1,9 +1,9 @@
 package nl.tudelft.ewi.abs.nonnenmacher
 
+import nl.tudelft.ewi.abs.nonnenmacher.columnar.ArrowColumnarExtension
 import nl.tudelft.ewi.abs.nonnenmacher.gandiva.{GandivaFilterExec, GandivaProjectExec, ProjectionOnGandivaExtension}
-import nl.tudelft.ewi.abs.nonnenmacher.parquet.NativeParquetSourceScanExec
-import org.apache.spark.sql.execution.datasources.NativeParquetReaderExtension
-import org.apache.spark.sql.{ArrowColumnarExtension, DataFrame, SparkSessionExtensions}
+import nl.tudelft.ewi.abs.nonnenmacher.parquet.{ArrowParquetReaderExtension, ArrowParquetSourceScanExec}
+import org.apache.spark.sql.{DataFrame, SparkSessionExtensions}
 import org.junit.runner.RunWith
 import org.scalatest.FunSuite
 import org.scalatest.junit.JUnitRunner
@@ -12,7 +12,7 @@ import org.scalatest.junit.JUnitRunner
 class ParquetAndGandivaSuite extends FunSuite with SparkSessionGenerator {
 
   override def withExtensions: Seq[SparkSessionExtensions => Unit] =
-    Seq(NativeParquetReaderExtension(true),
+    Seq(ArrowParquetReaderExtension,
       ProjectionOnGandivaExtension,
       ArrowColumnarExtension)
 
@@ -32,7 +32,7 @@ class ParquetAndGandivaSuite extends FunSuite with SparkSessionGenerator {
     println("Executed Plan:")
     println(sqlDF.queryExecution.executedPlan)
 
-    assert(sqlDF.queryExecution.executedPlan.find(_.isInstanceOf[NativeParquetSourceScanExec]).isDefined)
+    assert(sqlDF.queryExecution.executedPlan.find(_.isInstanceOf[ArrowParquetSourceScanExec]).isDefined)
     assert(sqlDF.queryExecution.executedPlan.find(_.isInstanceOf[GandivaFilterExec]).isDefined)
     assert(sqlDF.queryExecution.executedPlan.find(_.isInstanceOf[GandivaProjectExec]).isDefined)
 
@@ -52,7 +52,7 @@ class ParquetAndGandivaSuite extends FunSuite with SparkSessionGenerator {
     //    println("Executed Plan:")
     //    println(sqlDF.queryExecution.executedPlan)
 
-    assert(sqlDF.queryExecution.executedPlan.find(_.isInstanceOf[NativeParquetSourceScanExec]).isDefined)
+    assert(sqlDF.queryExecution.executedPlan.find(_.isInstanceOf[ArrowParquetSourceScanExec]).isDefined)
     assert(sqlDF.queryExecution.executedPlan.find(_.isInstanceOf[GandivaProjectExec]).isDefined)
 
     println(sqlDF.collect.head)
@@ -79,7 +79,7 @@ class ParquetAndGandivaSuite extends FunSuite with SparkSessionGenerator {
     //    println("Executed Plan:")
     //    println(sqlDF.queryExecution.executedPlan)
 
-    assert(sqlDF.queryExecution.executedPlan.find(_.isInstanceOf[NativeParquetSourceScanExec]).isDefined)
+    assert(sqlDF.queryExecution.executedPlan.find(_.isInstanceOf[ArrowParquetSourceScanExec]).isDefined)
     assert(sqlDF.queryExecution.executedPlan.find(_.isInstanceOf[GandivaProjectExec]).isDefined)
 
     println(sqlDF.collect.head)
@@ -93,7 +93,7 @@ class ParquetAndGandivaSuite extends FunSuite with SparkSessionGenerator {
       "WHERE `x1` < `x2` AND `x3` < `x4`")
       .agg("sum" -> "max")
 
-    assert(sqlDF.queryExecution.executedPlan.find(_.isInstanceOf[NativeParquetSourceScanExec]).isDefined)
+    assert(sqlDF.queryExecution.executedPlan.find(_.isInstanceOf[ArrowParquetSourceScanExec]).isDefined)
     assert(sqlDF.queryExecution.executedPlan.find(_.isInstanceOf[GandivaFilterExec]).isDefined)
     assert(sqlDF.queryExecution.executedPlan.find(_.isInstanceOf[GandivaProjectExec]).isDefined)
 

@@ -1,8 +1,8 @@
 package nl.tudelft.ewi.abs.nonnenmacher
 
-import nl.tudelft.ewi.abs.nonnenmacher.parquet.NativeParquetSourceScanExec
-import org.apache.spark.sql.execution.datasources.NativeParquetReaderExtension
-import org.apache.spark.sql.{MeasureColumnarProcessingExec, MeasureColumnarProcessingExtension, SparkSessionExtensions}
+import nl.tudelft.ewi.abs.nonnenmacher.measuring.{MeasureColumnarProcessingExec, MeasureColumnarProcessingExtension}
+import nl.tudelft.ewi.abs.nonnenmacher.parquet.{ArrowParquetReaderExtension, ArrowParquetSourceScanExec}
+import org.apache.spark.sql.SparkSessionExtensions
 import org.junit.runner.RunWith
 import org.scalatest.FunSuite
 import org.scalatest.junit.JUnitRunner
@@ -11,7 +11,7 @@ import org.scalatest.junit.JUnitRunner
 class ArrowMemoryToSparkMemorySuite extends FunSuite with SparkSessionGenerator {
 
   override def withExtensions: Seq[SparkSessionExtensions => Unit] =
-    Seq(NativeParquetReaderExtension(true), MeasureColumnarProcessingExtension)
+    Seq(ArrowParquetReaderExtension, MeasureColumnarProcessingExtension)
 
   test("read three fields") {
 
@@ -24,7 +24,7 @@ class ArrowMemoryToSparkMemorySuite extends FunSuite with SparkSessionGenerator 
     println("Executed Plan:")
     println(sqlDF.queryExecution.executedPlan)
 
-    assert(sqlDF.queryExecution.executedPlan.find(_.isInstanceOf[NativeParquetSourceScanExec]).isDefined)
+    assert(sqlDF.queryExecution.executedPlan.find(_.isInstanceOf[ArrowParquetSourceScanExec]).isDefined)
     assert(sqlDF.queryExecution.executedPlan.find(_.isInstanceOf[MeasureColumnarProcessingExec]).isDefined)
 
     println(sqlDF.first())

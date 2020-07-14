@@ -1,6 +1,8 @@
 package org.apache.spark.sql
 
-import nl.tudelft.ewi.abs.nonnenmacher.{MaxIntAggregator, TimeMeasuringIterator}
+import nl.tudelft.ewi.abs.nonnenmacher.columnar.VectorSchemaRootUtil
+import nl.tudelft.ewi.abs.nonnenmacher.MaxIntAggregator
+import nl.tudelft.ewi.abs.nonnenmacher.measuring.TimeMeasuringIterator
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.{Attribute, GenericInternalRow}

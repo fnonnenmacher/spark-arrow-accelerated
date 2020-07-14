@@ -3,9 +3,9 @@ package nl.tudelft.ewi.abs.nonnenmacher.gandiva
 import org.apache.arrow.gandiva.expression.TreeBuilder.{makeField, makeFunction}
 import org.apache.arrow.gandiva.expression.{TreeBuilder, TreeNode}
 import org.apache.arrow.vector.types.pojo.{ArrowType, Field, FieldType}
+import org.apache.spark.sql.SparkArrowUtils
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.types._
-import org.apache.spark.sql.util.ArrowUtils
 
 import scala.collection.JavaConverters._
 
@@ -13,10 +13,10 @@ object GandivaExpressionConverter {
 
   def makeCast(child: Expression, dataType: DataType): TreeNode = {
     dataType match {
-      case DoubleType => makeFunction("castFLOAT8", List(transform(child)).asJava, ArrowUtils.toArrowType(dataType, null))
-      case FloatType => makeFunction("castFLOAT4", List(transform(child)).asJava, ArrowUtils.toArrowType(dataType, null))
-      case IntegerType => makeFunction("castINT", List(transform(child)).asJava, ArrowUtils.toArrowType(dataType, null))
-      case LongType => makeFunction("castBIGINT", List(transform(child)).asJava, ArrowUtils.toArrowType(dataType, null))
+      case DoubleType => makeFunction("castFLOAT8", List(transform(child)).asJava, SparkArrowUtils.toArrowType(dataType, null))
+      case FloatType => makeFunction("castFLOAT4", List(transform(child)).asJava, SparkArrowUtils.toArrowType(dataType, null))
+      case IntegerType => makeFunction("castINT", List(transform(child)).asJava, SparkArrowUtils.toArrowType(dataType, null))
+      case LongType => makeFunction("castBIGINT", List(transform(child)).asJava, SparkArrowUtils.toArrowType(dataType, null))
     }
   }
 
@@ -32,7 +32,7 @@ object GandivaExpressionConverter {
   }
 
   private def makeFieldReference(name: String, dataType: DataType, nullable: Boolean) = {
-    makeField(new Field(name, new FieldType(nullable, ArrowUtils.toArrowType(dataType, null), null), null))
+    makeField(new Field(name, new FieldType(nullable, SparkArrowUtils.toArrowType(dataType, null), null), null))
   }
 
   private def functionName(binaryArithmetic: BinaryArithmetic): String = binaryArithmetic match {
@@ -57,7 +57,7 @@ object GandivaExpressionConverter {
   }
 
   private def makeBinArithmeticFunction(bin: BinaryArithmetic): TreeNode = {
-    makeFunction(functionName(bin), List(transform(bin.left), transform(bin.right)).asJava, ArrowUtils.toArrowType(bin.dataType, null))
+    makeFunction(functionName(bin), List(transform(bin.left), transform(bin.right)).asJava, SparkArrowUtils.toArrowType(bin.dataType, null))
   }
 
   private def makeBinaryFunction(bin: BinaryOperator): TreeNode = bin match {

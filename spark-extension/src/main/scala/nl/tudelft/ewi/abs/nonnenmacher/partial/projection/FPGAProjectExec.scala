@@ -1,12 +1,13 @@
 package nl.tudelft.ewi.abs.nonnenmacher.partial.projection
 
 import nl.tudelft.ewi.abs.nonnenmacher.JNIProcessorFactory
+import nl.tudelft.ewi.abs.nonnenmacher.columnar.VectorSchemaRootUtil
 import nl.tudelft.ewi.abs.nonnenmacher.utils.AutoCloseProcessingHelper._
 import nl.tudelft.ewi.abs.nonnenmacher.utils.ClosableFunction
 import org.apache.arrow.vector.VectorSchemaRoot
 import org.apache.spark.TaskContext
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.VectorSchemaRootUtil
+import org.apache.spark.sql.SparkArrowUtils
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.{Attribute, AttributeReference}
 import org.apache.spark.sql.execution.{SparkPlan, UnaryExecNode}
@@ -41,8 +42,8 @@ case class FPGAProjectExec(child: SparkPlan, name: String, outputs: Seq[Attribut
   private class FPGAProjection extends ClosableFunction[VectorSchemaRoot, VectorSchemaRoot] {
 
     private var isClosed = false
-    private val inputSchema = ArrowUtils.toArrowSchema(child.schema, null) //TODO
-    private val outputSchema = ArrowUtils.toArrowSchema(schema, null) //TODO
+    private val inputSchema = SparkArrowUtils.toArrowSchema(child.schema, null) //TODO
+    private val outputSchema = SparkArrowUtils.toArrowSchema(schema, null) //TODO
     private val processor = JNIProcessorFactory.threeIntAddingProcessor(inputSchema, outputSchema);
 
 
@@ -63,7 +64,7 @@ case class FPGAProjectExec(child: SparkPlan, name: String, outputs: Seq[Attribut
 
 object FPGAProjectExec {
   def apply(child: SparkPlan, fpgaModule: FPGAModule): FPGAProjectExec = {
-    val outputType = ArrowUtils.fromArrowField(fpgaModule.output)
+    val outputType = SparkArrowUtils.fromArrowField(fpgaModule.output)
     val attrOut = AttributeReference(fpgaModule.output.getName, outputType)()
     FPGAProjectExec(child, fpgaModule.name, Seq(attrOut))
   }

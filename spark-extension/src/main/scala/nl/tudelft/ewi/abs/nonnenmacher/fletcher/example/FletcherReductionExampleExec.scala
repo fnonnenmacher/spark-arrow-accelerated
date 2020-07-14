@@ -1,11 +1,12 @@
 package org.apache.spark.sql
 
 import nl.tudelft.ewi.abs.nonnenmacher.FletcherReductionProcessor
+import nl.tudelft.ewi.abs.nonnenmacher.columnar.VectorSchemaRootUtil
 import nl.tudelft.ewi.abs.nonnenmacher.utils.AutoCloseProcessingHelper._
 import org.apache.arrow.vector.types.pojo.Schema
 import org.apache.spark.TaskContext
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.VectorSchemaRootUtil.{from, toBatch}
+import nl.tudelft.ewi.abs.nonnenmacher.columnar.VectorSchemaRootUtil.{from, toBatch}
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.{Attribute, GenericInternalRow}
 import org.apache.spark.sql.execution.metric.{SQLMetric, SQLMetrics}
@@ -32,8 +33,10 @@ case class FletcherReductionExampleExec(out: Seq[Attribute], child: SparkPlan) e
       }
 
       var start: Long = 0
+      var batchId:Long = 0
       batches
         .map { x => start = System.nanoTime(); x }
+        .map { x => batchId=batchId+1;  println(s"Batch$batchId Num Rows:${x.numRows()}"); x}
         .map(VectorSchemaRootUtil.from)
         .mapAndAutoClose(fletcherReductionProcessor)
         .map(toRow)

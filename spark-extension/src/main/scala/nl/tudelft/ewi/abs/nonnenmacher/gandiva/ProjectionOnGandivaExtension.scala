@@ -1,23 +1,21 @@
 package nl.tudelft.ewi.abs.nonnenmacher.gandiva
 
-import org.apache.spark.sql.catalyst.plans.logical
-import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
-import org.apache.spark.sql.execution.SparkPlan
-import org.apache.spark.sql.{SparkSessionExtensions, Strategy}
+import org.apache.spark.sql.SparkSessionExtensions
+import org.apache.spark.sql.catalyst.rules.Rule
+import org.apache.spark.sql.execution.{ColumnarRule, FilterExec, ProjectExec, SparkPlan}
 
 
 object ProjectionOnGandivaExtension extends (SparkSessionExtensions => Unit) {
   def apply(e: SparkSessionExtensions): Unit = {
-    e.injectPlannerStrategy(_ => ProjectionOnGandivaStrategy)
+    e.injectColumnar(_ => ProjectionOnGandivaStrategy)
   }
 
-  object ProjectionOnGandivaStrategy extends Strategy {
-
-    override def apply(plan: LogicalPlan): Seq[SparkPlan] = {
-      plan match {
-        case logical.Project(projectList, child) => Seq(GandivaProjectExec(projectList, planLater(child)))
-        case logical.Filter(condition, child) => Seq(GandivaFilterExec(condition, planLater(child)))
-        case _ => Nil
+  private object ProjectionOnGandivaStrategy extends ColumnarRule {
+    override def preColumnarTransitions: Rule[SparkPlan] = { p: SparkPlan =>
+      p.transformDown {
+        case ProjectExec(projectList, child) => GandivaProjectExec(projectList, child)
+        case FilterExec(condition, child) => GandivaFilterExec(condition, child)
+        case p => p
       }
     }
   }

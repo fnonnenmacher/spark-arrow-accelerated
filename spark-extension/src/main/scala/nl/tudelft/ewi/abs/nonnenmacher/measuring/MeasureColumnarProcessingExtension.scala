@@ -1,7 +1,7 @@
-package org.apache.spark.sql
+package nl.tudelft.ewi.abs.nonnenmacher.measuring
 
-import nl.tudelft.ewi.abs.nonnenmacher.TimeMeasuringIterator
 import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.SparkSessionExtensions
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.Attribute
 import org.apache.spark.sql.catalyst.rules.Rule
@@ -35,7 +35,7 @@ case class MeasureColumnarProcessingExec(override val child: SparkPlan) extends 
 
     val conversionTime = longMetric("columnarProcessing")
 
-    child.executeColumnar().mapPartitionsInternal { batches =>
+    child.executeColumnar().mapPartitions { batches =>
       new TimeMeasuringIterator[ColumnarBatch](batches, conversionTime)
     }
   }

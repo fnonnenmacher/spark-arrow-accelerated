@@ -1,31 +1,20 @@
-package org.apache.spark.sql
+package nl.tudelft.ewi.abs.nonnenmacher.columnar
 
+import nl.tudelft.ewi.abs.nonnenmacher.columnar.VectorSchemaRootUtil.toBatch
 import nl.tudelft.ewi.abs.nonnenmacher.utils.StartStopMeasurment
 import org.apache.arrow.gandiva.evaluator.SelectionVector
 import org.apache.arrow.vector.VectorSchemaRoot
 import org.apache.spark.TaskContext
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.VectorSchemaRootUtil.toBatch
+import org.apache.spark.sql._
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.UnsafeProjection
 import org.apache.spark.sql.catalyst.rules.Rule
 import org.apache.spark.sql.execution.arrow.ArrowWriter
 import org.apache.spark.sql.execution.metric.{SQLMetric, SQLMetrics}
-import org.apache.spark.sql.execution.{ColumnarRule, ColumnarToRowExec, RowToColumnarExec, SparkPlan}
-import org.apache.spark.sql.util.ArrowUtils
+import org.apache.spark.sql.execution.{ColumnarToRowExec, RowToColumnarExec, SparkPlan}
 import org.apache.spark.sql.vectorized.ColumnarBatch
 
-
-/**
- * Spark has added columnar processing support to version 3 See https://issues.apache.org/jira/browse/SPARK-27396 for details.
- *
- * Unfortunately, the team has decided to not use Apache Arrow, yet. However, this structure at least the opportunity to
- * override the existing memory mapping with an arrow based implementation.
- *
- */
-object ArrowColumnarConversionRule extends ColumnarRule {
-  override def postColumnarTransitions: Rule[SparkPlan] = ConvertToArrowColumnsRule();
-}
 
 object ArrowColumnarExtension extends (SparkSessionExtensions => Unit) {
   override def apply(e: SparkSessionExtensions): Unit = {
@@ -54,12 +43,12 @@ class RowToArrowColumnarExec(override val child: SparkPlan) extends RowToColumna
 
     val maxRecordsPerBatch = conf.columnBatchSize
 
-    child.execute().mapPartitionsInternal { rowIter =>
+    child.execute().mapPartitions { rowIter =>
 
       val allocator =
-        ArrowUtils.rootAllocator.newChildAllocator(s"${this.getClass.getSimpleName}", 0, Long.MaxValue)
+        SparkArrowUtils.rootAllocator.newChildAllocator(s"${this.getClass.getSimpleName}", 0, Long.MaxValue)
 
-      val arrowSchema = ArrowUtils.toArrowSchema(schema, conf.sessionLocalTimeZone)
+      val arrowSchema = SparkArrowUtils.toArrowSchema(schema, conf.sessionLocalTimeZone)
       val root = VectorSchemaRoot.create(arrowSchema, allocator)
       val arrowWriter = ArrowWriter.create(root)
 
@@ -128,7 +117,7 @@ class ColumnarWithSelectionToRowExec(override val child: SparkPlan) extends Colu
     // This avoids calling `output` in the RDD closure, so that we don't need to include the entire
     // plan (this) in the closure.
     val localOutput = this.output
-    childWithSelection.executeColumnarWithSelection().mapPartitionsInternal { batches =>
+    childWithSelection.executeColumnarWithSelection().mapPartitions { batches =>
       val toUnsafe = UnsafeProjection.create(localOutput, localOutput)
 
       batches.flatMap { case (batch, selectionVector) =>

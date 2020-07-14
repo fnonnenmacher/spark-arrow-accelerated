@@ -1,6 +1,7 @@
 package nl.tudelft.ewi.abs.nonnenmacher.gandiva
 
 import io.netty.buffer.ArrowBuf
+import nl.tudelft.ewi.abs.nonnenmacher.columnar.{ColumnarWithSelectionVectorSupport, VectorSchemaRootUtil}
 import nl.tudelft.ewi.abs.nonnenmacher.utils.AutoCloseProcessingHelper._
 import nl.tudelft.ewi.abs.nonnenmacher.utils.ClosableFunction
 import org.apache.arrow.gandiva.evaluator.{Filter, SelectionVector, SelectionVectorInt16}
@@ -13,9 +14,8 @@ import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.{Attribute, Expression}
 import org.apache.spark.sql.execution.metric.SQLMetrics
 import org.apache.spark.sql.execution.{SparkPlan, UnaryExecNode}
-import org.apache.spark.sql.util.ArrowUtils
 import org.apache.spark.sql.vectorized.ColumnarBatch
-import org.apache.spark.sql.{ColumnarWithSelectionVectorSupport, VectorSchemaRootUtil}
+import org.apache.spark.sql.SparkArrowUtils
 
 import scala.collection.JavaConverters._
 
@@ -53,9 +53,9 @@ case class GandivaFilterExec(filterExpression: Expression, child: SparkPlan) ext
   private class GandivaFilter extends ClosableFunction[VectorSchemaRoot, (VectorSchemaRoot, SelectionVector)] {
 
     private var isClosed = false;
-    private val allocator: BufferAllocator = ArrowUtils.rootAllocator.newChildAllocator(s"${this.getClass.getSimpleName}", 0, Long.MaxValue)
+    private val allocator: BufferAllocator = SparkArrowUtils.rootAllocator.newChildAllocator(s"${this.getClass.getSimpleName}", 0, Long.MaxValue)
     private val gandivaCondition = makeCondition(GandivaExpressionConverter.transform(filterExpression))
-    private val gandivaFilter: Filter = Filter.make(ArrowUtils.toArrowSchema(child.schema, conf.sessionLocalTimeZone), gandivaCondition)
+    private val gandivaFilter: Filter = Filter.make(SparkArrowUtils.toArrowSchema(child.schema, conf.sessionLocalTimeZone), gandivaCondition)
     private var selectionVector: Option[SelectionVector] = Option.empty
 
     override def apply(rootIn: VectorSchemaRoot): (VectorSchemaRoot, SelectionVector) = {

@@ -2,23 +2,24 @@ package nl.tudelft.ewi.abs.nonnenmacher
 
 import java.io.{FileWriter, PrintWriter}
 
+import nl.tudelft.ewi.abs.nonnenmacher.columnar.ArrowColumnarExtension
 import nl.tudelft.ewi.abs.nonnenmacher.fletcher.example.FletcherReductionExampleExtension
 import nl.tudelft.ewi.abs.nonnenmacher.gandiva.{GandivaFilterExec, GandivaProjectExec, ProjectionOnGandivaExtension}
-import nl.tudelft.ewi.abs.nonnenmacher.parquet.NativeParquetSourceScanExec
-import org.apache.spark.sql.execution.datasources.{NativeParquetReaderExtension, NativeParquetReaderStrategy}
+import nl.tudelft.ewi.abs.nonnenmacher.measuring.{MeasureColumnarProcessingExec, MeasureColumnarProcessingExtension}
+import nl.tudelft.ewi.abs.nonnenmacher.parquet.{ArrowParquetReaderExtension, ArrowParquetSourceScanExec}
 import org.apache.spark.sql.execution.{FileSourceScanExec, QueryExecution}
 import org.apache.spark.sql.util.QueryExecutionListener
 import org.apache.spark.sql.{ArrowMemoryToSparkMemoryExtension, SparkSessionExtensions, _}
 import org.openjdk.jmh.infra.BenchmarkParams
 
-import scala.collection.mutable
 import scala.collection.JavaConverters._
+import scala.collection.mutable
 
 object SparkSetup {
 
   final val MILLION: Int = 1000000
 
-  //It is with JMH easier to use predefined strings, then a real enum
+  //It is with JMH and Scala easier to use predefined strings, then a enum
   final val PLAIN = "PLAIN"
   final val PARQUET_ONLY = "PARQUET_ONLY"
   final val PARQUET_AND_GANDIVA = "PARQUET_AND_GANDIVA"
@@ -29,19 +30,21 @@ object SparkSetup {
   private def extensionOf(s: String): Seq[SparkSessionExtensions => Unit] = s match {
     case PLAIN => Seq(MeasureColumnarProcessingExtension)
     case PARQUET_ONLY =>
-      Seq(NativeParquetReaderExtension(), MeasureColumnarProcessingExtension)
+      Seq(ArrowParquetReaderExtension, MeasureColumnarProcessingExtension)
     case PARQUET_AND_GANDIVA =>
-      Seq(NativeParquetReaderExtension(true),
+      Seq(ArrowParquetReaderExtension,
         ProjectionOnGandivaExtension,
         ArrowColumnarExtension)
     case WITH_MAX_AGGREGATION =>
-      Seq(NativeParquetReaderExtension(true),
+      Seq(ArrowParquetReaderExtension,
         ProjectionOnGandivaExtension,
         DirtyMaxAggregationExtension)
     case PARQUET_AND_MEMORY_CONVERSION =>
-      Seq(NativeParquetReaderExtension(), ArrowMemoryToSparkMemoryExtension)
+      Seq(ArrowParquetReaderExtension,
+        ArrowMemoryToSparkMemoryExtension)
     case FLETCHER_EXAMPLE =>
-      Seq(NativeParquetReaderExtension(), FletcherReductionExampleExtension)
+      Seq(ArrowParquetReaderExtension,
+        FletcherReductionExampleExtension)
     case _ => throw new IllegalArgumentException(s"Spark configuration $s not defined!")
   }
 
@@ -80,7 +83,7 @@ object SparkSetup {
 
         qe.executedPlan.foreach {
           case fs@FileSourceScanExec(_, _, _, _, _, _, _) => fs.metrics.get("scanTime").foreach(m => scanTime = m.value)
-          case ns@NativeParquetSourceScanExec(_, _, _, _, _, _, _) => ns.metrics.get("scanTime").foreach(m => scanTime = (m.value / MILLION))
+          case ns@ArrowParquetSourceScanExec(_, _, _) => ns.metrics.get("scanTime").foreach(m => scanTime = (m.value / MILLION))
           case g@GandivaFilterExec(_, _) => g.metrics.get("time").foreach(m => gandiva += m.value / MILLION)
           case g@FletcherReductionExampleExec(_, _) => g.metrics.get("aggregationTime").foreach(m => aggregationTime += m.value / MILLION)
           case g@GandivaProjectExec(_, _) => g.metrics.get("time").foreach(m => gandiva += m.value / MILLION)
@@ -91,7 +94,7 @@ object SparkSetup {
           case a@org.apache.spark.sql.ArrowMemoryToSparkMemoryExec(_) => {
             a.metrics.get("conversionTime").foreach(m => processing = m.value / MILLION)
           }
-          case a@org.apache.spark.sql.MeasureColumnarProcessingExec(_) => {
+          case a@MeasureColumnarProcessingExec(_) => {
             a.metrics.get("columnarProcessing").foreach(m => processing = m.value / MILLION)
           }
           case _ =>
@@ -101,7 +104,7 @@ object SparkSetup {
 
       }
 
-      override def onFailure(funcName: String, qe: QueryExecution, error: Throwable): Unit = {}
+      override def onFailure(funcName: String, qe: QueryExecution, exception: Exception): Unit = {}
     })
 
     spark
@@ -152,7 +155,7 @@ object SparkSetup {
       val r: Seq[Long] = m1.zip(m2).map(e => e._1 + e._2)
       r
     }.map(_.toFloat / measurementIterations)
-    metricsResultWriter.write(s"$name;${params.mkString(";")};${m.mkString(";")}\n".replace(".",","))
+    metricsResultWriter.write(s"$name;${params.mkString(";")};${m.mkString(";")}\n".replace(".", ","))
     metricsResultWriter.flush()
   }
 }

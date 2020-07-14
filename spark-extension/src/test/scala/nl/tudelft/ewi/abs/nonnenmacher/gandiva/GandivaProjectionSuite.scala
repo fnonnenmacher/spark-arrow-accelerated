@@ -1,12 +1,12 @@
 package nl.tudelft.ewi.abs.nonnenmacher.gandiva
 
-import nl.tudelft.ewi.abs.nonnenmacher.{GlobalAllocator, SparkSessionGenerator}
+import nl.tudelft.ewi.abs.nonnenmacher.SparkSessionGenerator
+import nl.tudelft.ewi.abs.nonnenmacher.columnar.ArrowColumnarExtension
+import org.apache.spark.sql.SparkSessionExtensions
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.util.ArrowUtils
-import org.apache.spark.sql.{ArrowColumnarExtension, SparkSessionExtensions}
 import org.junit.runner.RunWith
+import org.scalatest.FunSuite
 import org.scalatest.junit.JUnitRunner
-import org.scalatest.{BeforeAndAfterEach, FunSuite}
 
 
 @RunWith(classOf[JUnitRunner])

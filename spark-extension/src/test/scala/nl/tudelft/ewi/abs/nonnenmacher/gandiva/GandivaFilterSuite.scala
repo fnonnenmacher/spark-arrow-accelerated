@@ -1,9 +1,9 @@
 package nl.tudelft.ewi.abs.nonnenmacher.gandiva
 
-import nl.tudelft.ewi.abs.nonnenmacher.{GlobalAllocator, SparkSessionGenerator}
+import nl.tudelft.ewi.abs.nonnenmacher.SparkSessionGenerator
+import nl.tudelft.ewi.abs.nonnenmacher.columnar.ArrowColumnarExtension
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.util.ArrowUtils
-import org.apache.spark.sql.{ArrowColumnarExtension, Row, SparkSessionExtensions}
+import org.apache.spark.sql.{Row, SparkSessionExtensions}
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import org.scalatest.{BeforeAndAfterEach, FunSuite}
@@ -11,6 +11,7 @@ import org.scalatest.{BeforeAndAfterEach, FunSuite}
 
 @RunWith(classOf[JUnitRunner])
 class GandivaFilterSuite extends FunSuite with BeforeAndAfterEach with SparkSessionGenerator {
+
 
   override def withExtensions: Seq[SparkSessionExtensions => Unit] = Seq(ProjectionOnGandivaExtension, ArrowColumnarExtension)
 

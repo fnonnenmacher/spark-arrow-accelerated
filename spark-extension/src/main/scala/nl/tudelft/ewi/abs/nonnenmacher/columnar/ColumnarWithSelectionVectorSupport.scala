@@ -1,4 +1,4 @@
-package org.apache.spark.sql
+package nl.tudelft.ewi.abs.nonnenmacher.columnar
 
 import org.apache.arrow.gandiva.evaluator.SelectionVector
 import org.apache.spark.rdd.RDD
