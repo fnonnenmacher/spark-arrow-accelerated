@@ -5,6 +5,7 @@ import java.io.{FileWriter, PrintWriter}
 import nl.tudelft.ewi.abs.nonnenmacher.columnar.ArrowColumnarExtension
 import nl.tudelft.ewi.abs.nonnenmacher.fletcher.example.FletcherReductionExampleExtension
 import nl.tudelft.ewi.abs.nonnenmacher.gandiva.{GandivaFilterExec, GandivaProjectExec, ProjectionOnGandivaExtension}
+import nl.tudelft.ewi.abs.nonnenmacher.max.aggregation.{SimpleMaxAggregationExec, SimpleMaxAggregationExtension}
 import nl.tudelft.ewi.abs.nonnenmacher.measuring.{MeasureColumnarProcessingExec, MeasureColumnarProcessingExtension}
 import nl.tudelft.ewi.abs.nonnenmacher.parquet.{ArrowParquetReaderExtension, ArrowParquetSourceScanExec}
 import org.apache.spark.sql.execution.{FileSourceScanExec, QueryExecution}
@@ -38,7 +39,7 @@ object SparkSetup {
     case WITH_MAX_AGGREGATION =>
       Seq(ArrowParquetReaderExtension,
         ProjectionOnGandivaExtension,
-        DirtyMaxAggregationExtension)
+        SimpleMaxAggregationExtension)
     case PARQUET_AND_MEMORY_CONVERSION =>
       Seq(ArrowParquetReaderExtension,
         ArrowMemoryToSparkMemoryExtension)
@@ -87,7 +88,7 @@ object SparkSetup {
           case g@GandivaFilterExec(_, _) => g.metrics.get("time").foreach(m => gandiva += m.value / MILLION)
           case g@FletcherReductionExampleExec(_, _) => g.metrics.get("aggregationTime").foreach(m => aggregationTime += m.value / MILLION)
           case g@GandivaProjectExec(_, _) => g.metrics.get("time").foreach(m => gandiva += m.value / MILLION)
-          case g@ColumnarToRowMaxAggregatorExec(_) => {
+          case g@SimpleMaxAggregationExec(_) => {
             g.metrics.get("aggregationTime").foreach(m => aggregationTime = m.value / MILLION)
             g.metrics.get("processing").foreach(m => processing = m.value / MILLION)
           }

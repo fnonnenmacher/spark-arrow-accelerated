@@ -9,7 +9,7 @@ import org.apache.spark.sql.types._
 
 import scala.collection.JavaConverters._
 
-object GandivaExpressionConverter {
+object ExpressionConverter {
 
   def makeCast(child: Expression, dataType: DataType): TreeNode = {
     dataType match {

@@ -1,7 +1,7 @@
 package nl.tudelft.ewi.abs.nonnenmacher.partial.projection
 
 import nl.tudelft.ewi.abs.nonnenmacher.JNIProcessorFactory
-import nl.tudelft.ewi.abs.nonnenmacher.columnar.VectorSchemaRootUtil
+import nl.tudelft.ewi.abs.nonnenmacher.columnar.ArrowColumnarConverters._
 import nl.tudelft.ewi.abs.nonnenmacher.utils.AutoCloseProcessingHelper._
 import nl.tudelft.ewi.abs.nonnenmacher.utils.ClosableFunction
 import org.apache.arrow.vector.VectorSchemaRoot
@@ -11,7 +11,6 @@ import org.apache.spark.sql.SparkArrowUtils
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.{Attribute, AttributeReference}
 import org.apache.spark.sql.execution.{SparkPlan, UnaryExecNode}
-import org.apache.spark.sql.util.ArrowUtils
 import org.apache.spark.sql.vectorized.ColumnarBatch
 
 case class FPGAProjectExec(child: SparkPlan, name: String, outputs: Seq[Attribute])
@@ -33,9 +32,9 @@ case class FPGAProjectExec(child: SparkPlan, name: String, outputs: Seq[Attribut
       }
 
       batchIter
-        .map(VectorSchemaRootUtil.from)
+        .map(_.toArrow)
         .mapAndAutoClose(fpgaProjection)
-        .map(VectorSchemaRootUtil.toBatch)
+        .map(_.toBatch)
     })
   }
 

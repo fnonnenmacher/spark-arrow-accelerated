@@ -18,7 +18,6 @@ public:
     explicit JavaMemoryPool(JNIEnv *env, jobject jmemorypool) : arrow::MemoryPool(),
                                                                 env_(env),
                                                                 jmemorypool_(env_->NewGlobalRef(jmemorypool)) {};
-
     ~JavaMemoryPool() override {
             env_->DeleteGlobalRef(jmemorypool_);
     };

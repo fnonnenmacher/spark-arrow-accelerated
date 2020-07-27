@@ -1,4 +1,4 @@
-package nl.tudelft.ewi.abs.nonnenmacher.columnar
+package nl.tudelft.ewi.abs.nonnenmacher.columnar.selection
 
 import org.apache.arrow.gandiva.evaluator.SelectionVector
 import org.apache.spark.rdd.RDD

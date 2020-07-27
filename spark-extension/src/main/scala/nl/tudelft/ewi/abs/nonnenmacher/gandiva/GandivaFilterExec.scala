@@ -1,7 +1,8 @@
 package nl.tudelft.ewi.abs.nonnenmacher.gandiva
 
 import io.netty.buffer.ArrowBuf
-import nl.tudelft.ewi.abs.nonnenmacher.columnar.{ColumnarWithSelectionVectorSupport, VectorSchemaRootUtil}
+import nl.tudelft.ewi.abs.nonnenmacher.columnar.ArrowColumnarConverters._
+import nl.tudelft.ewi.abs.nonnenmacher.columnar.selection.ColumnarWithSelectionVectorSupport
 import nl.tudelft.ewi.abs.nonnenmacher.utils.AutoCloseProcessingHelper._
 import nl.tudelft.ewi.abs.nonnenmacher.utils.ClosableFunction
 import org.apache.arrow.gandiva.evaluator.{Filter, SelectionVector, SelectionVectorInt16}
@@ -43,9 +44,9 @@ case class GandivaFilterExec(filterExpression: Expression, child: SparkPlan) ext
       }
       batchIter
         .map { x => start = System.nanoTime(); x }
-        .map(VectorSchemaRootUtil.from)
+        .map(_.toArrow)
         .mapAndAutoClose(gandivaFilter)
-        .map { case (root, selectionVector) => (VectorSchemaRootUtil.toBatch(root), selectionVector) }
+        .map { case (root, selectionVector) => (root.toBatch, selectionVector) }
         .map { x => time += System.nanoTime() - start; x }
     }
   }
@@ -54,7 +55,7 @@ case class GandivaFilterExec(filterExpression: Expression, child: SparkPlan) ext
 
     private var isClosed = false;
     private val allocator: BufferAllocator = SparkArrowUtils.rootAllocator.newChildAllocator(s"${this.getClass.getSimpleName}", 0, Long.MaxValue)
-    private val gandivaCondition = makeCondition(GandivaExpressionConverter.transform(filterExpression))
+    private val gandivaCondition = makeCondition(ExpressionConverter.transform(filterExpression))
     private val gandivaFilter: Filter = Filter.make(SparkArrowUtils.toArrowSchema(child.schema, conf.sessionLocalTimeZone), gandivaCondition)
     private var selectionVector: Option[SelectionVector] = Option.empty
 

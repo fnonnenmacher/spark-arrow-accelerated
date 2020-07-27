@@ -2,7 +2,7 @@
 // Created by Fabian Nonnenmacher on 18.06.20.
 //
 
-#include "FletcherReductionProcessor.h"
+#include "FletcherProcessorCpp.h"
 #include "jni/Assertions.h"
 #include "jni/Converters.h"
 #include "jni/ProtobufSchemaDeserializer.h"
@@ -10,7 +10,7 @@
 #include <utility>
 #include <unistd.h>
 
-FletcherReductionProcessor::FletcherReductionProcessor(std::shared_ptr<arrow::Schema> input_schema) {
+FletcherProcessorCpp::FletcherProcessorCpp(std::shared_ptr<arrow::Schema> input_schema) {
     schema = std::move(input_schema);
 
     // Create a Fletcher platform object, attempting to autodetect the platform.
@@ -43,7 +43,7 @@ long trivialCpuVersion(const std::shared_ptr<arrow::RecordBatch> &record_batch) 
     return sum;
 }
 
-long FletcherReductionProcessor::reduce(const std::shared_ptr<arrow::RecordBatch> &record_batch) {
+long FletcherProcessorCpp::reduce(const std::shared_ptr<arrow::RecordBatch> &record_batch) {
 
     // Create a context for our application on the platform.
     std::shared_ptr<fletcher::Context> context;
@@ -85,7 +85,7 @@ long FletcherReductionProcessor::reduce(const std::shared_ptr<arrow::RecordBatch
     return result;
 }
 
-JNIEXPORT jlong JNICALL Java_nl_tudelft_ewi_abs_nonnenmacher_FletcherReductionProcessor_initFletcherReductionProcessor
+JNIEXPORT jlong JNICALL Java_nl_tudelft_ewi_abs_nonnenmacher_FletcherProcessor_initFletcherProcessor
         (JNIEnv *env, jobject, jbyteArray schema_arr) {
 
     jsize schema_len = env->GetArrayLength(schema_arr);
@@ -93,7 +93,7 @@ JNIEXPORT jlong JNICALL Java_nl_tudelft_ewi_abs_nonnenmacher_FletcherReductionPr
 
     std::shared_ptr<arrow::Schema> schema = ReadSchemaFromProtobufBytes(schema_bytes, schema_len);
 
-    return (jlong) new FletcherReductionProcessor(schema);
+    return (jlong) new FletcherProcessorCpp(schema);
 }
 
 
@@ -103,10 +103,10 @@ JNIEXPORT jlong JNICALL Java_nl_tudelft_ewi_abs_nonnenmacher_FletcherReductionPr
  * Method:    reduce
  * Signature: (JI[J[J)J
  */
-JNIEXPORT jlong JNICALL Java_nl_tudelft_ewi_abs_nonnenmacher_FletcherReductionProcessor_reduce
+JNIEXPORT jlong JNICALL Java_nl_tudelft_ewi_abs_nonnenmacher_FletcherProcessor_reduce
         (JNIEnv *env, jobject, jlong process_ptr, jint num_rows, jlongArray in_buf_addrs, jlongArray in_buf_sizes) {
 
-    FletcherReductionProcessor *processor = (FletcherReductionProcessor *) process_ptr;
+    FletcherProcessorCpp *processor = (FletcherProcessorCpp *) process_ptr;
 
     // Extract input RecordBatch
     int in_buf_len = env->GetArrayLength(in_buf_addrs);
@@ -121,7 +121,7 @@ JNIEXPORT jlong JNICALL Java_nl_tudelft_ewi_abs_nonnenmacher_FletcherReductionPr
     return (jlong) processor->reduce(in_batch);
 }
 
-JNIEXPORT void JNICALL Java_nl_tudelft_ewi_abs_nonnenmacher_FletcherReductionProcessor_close
+JNIEXPORT void JNICALL Java_nl_tudelft_ewi_abs_nonnenmacher_FletcherProcessor_close
         (JNIEnv *, jobject, jlong process_ptr) {
-    delete (FletcherReductionProcessor *) process_ptr;
+    delete (FletcherProcessorCpp *) process_ptr;
 }

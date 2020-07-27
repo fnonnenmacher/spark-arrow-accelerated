@@ -11,7 +11,7 @@ static jmethodID jmemorypool_class_max_memory_method;
 void JNI_OnLoad_JavaMemoryPool(JNIEnv *env, void *reserved) {
 
     jclass local_jmemorypool_class =
-            env->FindClass("nl/tudelft/ewi/abs/nonnenmacher/JMemoryPool");
+            env->FindClass("nl/tudelft/ewi/abs/nonnenmacher/JavaMemoryPoolServer");
     jmemorypool_class = (jclass) env->NewGlobalRef(local_jmemorypool_class);
     env->DeleteLocalRef(local_jmemorypool_class);
 

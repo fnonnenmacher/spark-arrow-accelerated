@@ -23,7 +23,6 @@ dependencies {
     compile "org.apache.spark:spark-sql_2.12:$sparkVersion"
     compile "org.apache.spark:spark-catalyst_2.12:$sparkVersion"
     compile "org.apache.spark:spark-core_2.12:$sparkVersion"
-    compile "org.apache.spark:spark-mllib_2.12:$sparkVersion"
 
     //USE JUnit 4 instead because scalatest is not compatible with jUni5
     testCompile 'org.scalatest:scalatest_2.12:3.0.1'
@@ -62,7 +61,6 @@ def jmhTask = project.tasks.findByPath(":$project.name:jmh")
 jmhTask.doFirst {
     file(metricsFile).delete()
 }
-
 
 jmhJar {
     mergeServiceFiles()

@@ -5,7 +5,7 @@ import org.apache.arrow.memory.BufferAllocator
 
 import scala.collection.mutable
 
-class JMemoryPool(val allocator: BufferAllocator) {
+class JavaMemoryPoolServer(val allocator: BufferAllocator) {
 
   private val buffers: mutable.Map[Long, ArrowBuf] = mutable.Map()
   private val emptyBuffer = allocator.getEmpty

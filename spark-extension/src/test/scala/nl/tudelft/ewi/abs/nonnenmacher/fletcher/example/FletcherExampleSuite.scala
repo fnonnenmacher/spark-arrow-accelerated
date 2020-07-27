@@ -1,10 +1,9 @@
-package nl.tudelft.ewi.abs.nonnenmacher
+package nl.tudelft.ewi.abs.nonnenmacher.fletcher.example
 
-import nl.tudelft.ewi.abs.nonnenmacher.fletcher.example.FletcherReductionExampleExtension
+import nl.tudelft.ewi.abs.nonnenmacher.SparkSessionGenerator
 import nl.tudelft.ewi.abs.nonnenmacher.parquet.{ArrowParquetReaderExtension, ArrowParquetSourceScanExec}
-import org.apache.spark.sql.functions.col
 import org.apache.spark.sql.types._
-import org.apache.spark.sql.{DataFrame, FletcherReductionExampleExec, SparkSession, SparkSessionExtensions}
+import org.apache.spark.sql.{SparkSession, SparkSessionExtensions}
 import org.junit.runner.RunWith
 import org.scalatest.FunSuite
 import org.scalatest.junit.JUnitRunner
@@ -12,7 +11,7 @@ import org.scalatest.junit.JUnitRunner
 case class Employee(name: String, age: Long)
 
 @RunWith(classOf[JUnitRunner])
-class FletcherReductionExampleSuite extends FunSuite with SparkSessionGenerator {
+class FletcherExampleSuite extends FunSuite with SparkSessionGenerator {
 
   override def withExtensions: Seq[SparkSessionExtensions => Unit] = Seq(ArrowParquetReaderExtension, FletcherReductionExampleExtension)
 
@@ -31,7 +30,7 @@ class FletcherReductionExampleSuite extends FunSuite with SparkSessionGenerator 
 
     val schema = new StructType()
       .add(StructField("string", StringType, nullable = false))
-      .add(StructField("number", LongType,  nullable = false))
+      .add(StructField("number", LongType, nullable = false))
 
     val df = spark.read
       .options(Map("header" -> "true")) //inferSchema is an expensive operation, but because it's just converted once we don't care
@@ -65,7 +64,7 @@ class FletcherReductionExampleSuite extends FunSuite with SparkSessionGenerator 
 
     val schema = new StructType()
       .add(StructField("string", StringType, nullable = false))
-      .add(StructField("number", LongType,  nullable = false))
+      .add(StructField("number", LongType, nullable = false))
 
     val df = spark.read
       .parquet("/work/fnonnenmacher/data/chicago-taxi/taxi-uncompressed.parquet")

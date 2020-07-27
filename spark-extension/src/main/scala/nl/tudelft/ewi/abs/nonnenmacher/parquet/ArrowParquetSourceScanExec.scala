@@ -1,25 +1,23 @@
 package nl.tudelft.ewi.abs.nonnenmacher.parquet
 
 import nl.tudelft.ewi.abs.nonnenmacher.NativeParquetReader
+import nl.tudelft.ewi.abs.nonnenmacher.columnar.ArrowColumnarConverters._
+import nl.tudelft.ewi.abs.nonnenmacher.measuring.TimeMeasuringIterator
 import org.apache.arrow.vector.types.pojo.Schema
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkArrowUtils
-import nl.tudelft.ewi.abs.nonnenmacher.columnar.VectorSchemaRootUtil.toBatch
-import nl.tudelft.ewi.abs.nonnenmacher.measuring.TimeMeasuringIterator
-import org.apache.spark.sql.catalyst.expressions.{Attribute, Expression}
-import org.apache.spark.sql.catalyst.{InternalRow, TableIdentifier}
+import org.apache.spark.sql.catalyst.InternalRow
+import org.apache.spark.sql.catalyst.expressions.Attribute
 import org.apache.spark.sql.execution.LeafExecNode
 import org.apache.spark.sql.execution.datasources.HadoopFsRelation
 import org.apache.spark.sql.execution.metric.SQLMetrics
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.sql.vectorized.{ArrowColumnVector, ColumnarBatch}
-import org.apache.spark.util.collection.BitSet
 import org.apache.spark.{Partition, TaskContext}
 
 case class ArrowParquetSourceScanExec(@transient relation: HadoopFsRelation,
                                       outputs: Seq[Attribute],
                                       requiredSchema: StructType)
-//  extends FileSourceScanExec(relation, outputs, requiredSchema, partitionFilters, optionalBucketSet, dataFilters, tableIdentifier) {
   extends LeafExecNode {
 
   override lazy val supportsColumnar: Boolean = true;
@@ -41,7 +39,7 @@ case class ArrowParquetSourceScanExec(@transient relation: HadoopFsRelation,
         val schema: Schema = SparkArrowUtils.toArrowSchema(requiredSchema, conf.sessionLocalTimeZone)
 
         val parquetReader: Iterator[ColumnarBatch] = new NativeParquetReader(fileName, inputSchema, schema, maxRecordsPerBatch)
-          .map(toBatch)
+          .map(_.toBatch)
 
         new TimeMeasuringIterator(parquetReader, scanTime)
       }
@@ -51,14 +49,6 @@ case class ArrowParquetSourceScanExec(@transient relation: HadoopFsRelation,
       })
     }
   }
-
-  //  /** HACK; because overriding a case class is normally not a good idea. */
-  //  override def equals(other: Any): Boolean = {
-  //    if (!super.equals(other)) {
-  //      return false
-  //    }
-  //    other.isInstanceOf[NativeParquetSourceScanExec]
-  //  }
 
   override lazy val metrics = Map("scanTime" -> SQLMetrics.createNanoTimingMetric(sparkContext, "time in [ns]"))
 

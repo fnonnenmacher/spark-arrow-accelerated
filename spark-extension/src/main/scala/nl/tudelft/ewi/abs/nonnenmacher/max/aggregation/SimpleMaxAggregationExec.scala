@@ -1,35 +1,21 @@
-package org.apache.spark.sql
+package nl.tudelft.ewi.abs.nonnenmacher.max.aggregation
 
-import nl.tudelft.ewi.abs.nonnenmacher.columnar.VectorSchemaRootUtil
 import nl.tudelft.ewi.abs.nonnenmacher.MaxIntAggregator
+import nl.tudelft.ewi.abs.nonnenmacher.columnar.ArrowColumnarConverters._
 import nl.tudelft.ewi.abs.nonnenmacher.measuring.TimeMeasuringIterator
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.{Attribute, GenericInternalRow}
-import org.apache.spark.sql.catalyst.rules.Rule
 import org.apache.spark.sql.execution.metric.{SQLMetric, SQLMetrics}
-import org.apache.spark.sql.execution.{ColumnarRule, ColumnarToRowExec, SparkPlan, UnaryExecNode}
+import org.apache.spark.sql.execution.{SparkPlan, UnaryExecNode}
 
-object DirtyMaxAggregationConversionRule extends ColumnarRule {
-  override def postColumnarTransitions: Rule[SparkPlan] = {
-    case ColumnarToRowExec(child) => ColumnarToRowMaxAggregatorExec(postColumnarTransitions(child))
-    case plan => plan.withNewChildren(plan.children.map(postColumnarTransitions(_)))
-  }
-}
-
-object DirtyMaxAggregationExtension extends (SparkSessionExtensions => Unit) {
-  override def apply(e: SparkSessionExtensions) {
-    e.injectColumnar(_ => DirtyMaxAggregationConversionRule)
-  }
-}
-
-case class ColumnarToRowMaxAggregatorExec(override val child: SparkPlan) extends UnaryExecNode {
+case class SimpleMaxAggregationExec(override val child: SparkPlan) extends UnaryExecNode {
 
   override def doExecute(): RDD[InternalRow] = {
     val aggregationTime = longMetric("aggregationTime")
     val processing = longMetric("processing")
 
-    child.executeColumnar().mapPartitionsInternal { batches =>
+    child.executeColumnar().mapPartitions { batches =>
       //      val toUnsafe = UnsafeProjection.create(localOutput, localOutput)
       val maxIntAggregator = new MaxIntAggregator()
 
@@ -37,7 +23,7 @@ case class ColumnarToRowMaxAggregatorExec(override val child: SparkPlan) extends
 
         val start = System.nanoTime()
 
-        val root = VectorSchemaRootUtil.from(batch)
+        val root = batch.toArrow
         val res = maxIntAggregator.aggregate(root)
 
         aggregationTime += System.nanoTime() - start

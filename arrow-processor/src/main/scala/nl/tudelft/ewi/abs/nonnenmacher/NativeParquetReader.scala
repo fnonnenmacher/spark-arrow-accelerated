@@ -14,7 +14,7 @@ import scala.collection.mutable
 class NativeParquetReader(val fileName: String, val inputSchema: Schema, val outputSchema: Schema, val batchSize: Int) extends Iterator[VectorSchemaRoot] {
 
   private val allocator = GlobalAllocator.newChildAllocator(this.getClass)
-  private val memoryPool = new JMemoryPool(allocator)
+  private val memoryPool = new JavaMemoryPoolServer(allocator)
 
   private val ptr: Long = {
     NativeLibraryLoader.load()
@@ -97,7 +97,7 @@ class NativeParquetReader(val fileName: String, val inputSchema: Schema, val out
     Option(new VectorSchemaRoot(vectors.asJava))
   }
 
-  @native def initNativeParquetReader(jMemoryPool: JMemoryPool, fileName: String, inputSchemaBytes: Array[Byte], outputSchemaBytes: Array[Byte], numRows: Int): Long
+  @native def initNativeParquetReader(jMemoryPool: JavaMemoryPoolServer, fileName: String, inputSchemaBytes: Array[Byte], outputSchemaBytes: Array[Byte], numRows: Int): Long
 
   @native private def readNext(ptr: Long, lengths: Array[Long], nullCounts: Array[Long], bufAddrs: Array[Long]): Boolean;
 

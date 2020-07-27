@@ -12,15 +12,15 @@ import org.apache.arrow.vector.{VectorSchemaRoot, VectorUnloader}
 
 import scala.collection.JavaConverters._
 
-class FletcherReductionProcessor(schema: Schema) extends ClosableFunction[VectorSchemaRoot, Long] {
+class FletcherProcessor(schema: Schema) extends ClosableFunction[VectorSchemaRoot, Long] {
 
-  private val log = Logger.getLogger(classOf[FletcherReductionProcessor].getName)
+  private val log = Logger.getLogger(classOf[FletcherProcessor].getName)
 
   private var isClosed = false
   private val procId: Long = {
     NativeLibraryLoader.load()
     val schemaAsBytes = ArrowTypeHelper.arrowSchemaToProtobuf(schema).toByteArray
-    initFletcherReductionProcessor(schemaAsBytes)
+    initFletcherProcessor(schemaAsBytes)
   }
 
   def apply(rootIn: VectorSchemaRoot): Long = {
@@ -33,7 +33,7 @@ class FletcherReductionProcessor(schema: Schema) extends ClosableFunction[Vector
     r
   }
 
-  @native private def initFletcherReductionProcessor(schemaAsBytes: Array[Byte]): Long
+  @native private def initFletcherProcessor(schemaAsBytes: Array[Byte]): Long
 
   @native private def reduce(procId: Long, rowNumbers: Int, inBufAddrs: Array[Long], inBufSized: Array[Long]): Long;
 

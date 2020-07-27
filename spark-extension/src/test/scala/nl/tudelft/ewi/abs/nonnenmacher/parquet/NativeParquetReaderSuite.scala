@@ -1,17 +1,14 @@
 package nl.tudelft.ewi.abs.nonnenmacher.parquet
 
 import nl.tudelft.ewi.abs.nonnenmacher.SparkSessionGenerator
-import nl.tudelft.ewi.abs.nonnenmacher.gandiva.{GandivaFilterExec, GandivaProjectExec}
-import org.apache.spark.sql.execution.{ExplainMode, FileSourceScanExec, FormattedMode, QueryExecution}
-import org.apache.spark.sql.util.QueryExecutionListener
-import org.apache.spark.sql.{ColumnarToRowMaxAggregatorExec, DataFrame, FletcherReductionExampleExec, SparkSession, SparkSessionExtensions}
+import org.apache.spark.sql.{DataFrame, SparkSession, SparkSessionExtensions}
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import org.scalatest.{BeforeAndAfterEach, FunSuite}
 
 
 @RunWith(classOf[JUnitRunner])
-class ParquetReaderSuite extends FunSuite with BeforeAndAfterEach with SparkSessionGenerator {
+class NativeParquetReaderSuite extends FunSuite with BeforeAndAfterEach with SparkSessionGenerator {
 
   override def withExtensions: Seq[SparkSessionExtensions => Unit] = Seq(ArrowParquetReaderExtension)
 

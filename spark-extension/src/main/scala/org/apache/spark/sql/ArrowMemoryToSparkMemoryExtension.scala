@@ -1,6 +1,6 @@
 package org.apache.spark.sql
 
-import nl.tudelft.ewi.abs.nonnenmacher.columnar.VectorSchemaRootUtil
+import nl.tudelft.ewi.abs.nonnenmacher.columnar.ArrowColumnarConverters._
 import nl.tudelft.ewi.abs.nonnenmacher.measuring.TimeMeasuringIterator
 import org.apache.arrow.vector.IntVector
 import org.apache.spark.rdd.RDD
@@ -44,7 +44,7 @@ case class ArrowMemoryToSparkMemoryExec(override val child: SparkPlan) extends U
 
       val newIter = batches.map { arrowBatch =>
 
-        val root = VectorSchemaRootUtil.from(arrowBatch)
+        val root = arrowBatch.toArrow
         val columnVecs = root.getFieldVectors.asScala.map(fv => convert(fv.asInstanceOf[IntVector])).toArray
 
         new ColumnarBatch(columnVecs, arrowBatch.numRows())

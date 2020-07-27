@@ -18,7 +18,7 @@ void JNI_OnUnload_JavaResizableBuffer(JNIEnv *env, void *reserved);
 ///
 /// \brief Resizable buffer which resizes by doing a callback into java.
 ///
-/// Copied from: https://github.com/apache/arrow/blob/apache-arrow-0.17.0/cpp/src/gandiva/jni/jni_common.cc#L674
+/// Copied from: https://github.com/apache/arrow/blob/apache-arrow-0.17.1/cpp/src/gandiva/jni/jni_common.cc#L674
 ///
 class JavaResizableBuffer : public arrow::ResizableBuffer {
 public:

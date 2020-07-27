@@ -14,7 +14,7 @@ class FletcherReductionSuite extends FunSuite {
       StringVector("company", Seq("Blue Ribbon Taxi Association Inc.", "A", "Blue Ribbon Taxi Association Inc.", "B")),
       LongVector("trip_seconds", Seq(1, 2, 3, 4)))
 
-    val fletcherReductionProcessor = new FletcherReductionProcessor(root.getSchema)
+    val fletcherReductionProcessor = new FletcherProcessor(root.getSchema)
 
     val reducedSum = fletcherReductionProcessor.apply(root)
 
