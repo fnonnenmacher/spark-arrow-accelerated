@@ -16,7 +16,7 @@ class MaxIntAggregatorTest extends FunSuite {
 
     val res = aggregator.aggregate(root)
 
-    assert(res == 55)
+    assert(res.head == 55)
 
     root.close()
 

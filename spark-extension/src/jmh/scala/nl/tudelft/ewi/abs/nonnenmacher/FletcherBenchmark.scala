@@ -28,10 +28,13 @@ object FletcherBenchmark {
   @State(Scope.Thread)
   private class TestState extends SparkState {
 
-    @Param(Array(FLETCHER))
+    @Param(Array(VANILLA))
     var sparkSetup: String = _
 
     var batchSize = 10000000
+
+    @Param(Array("10", "50", "100", "150"))
+    var size :Int =_
   }
 }
 

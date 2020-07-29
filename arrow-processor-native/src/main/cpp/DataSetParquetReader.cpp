@@ -3,6 +3,7 @@
 //
 
 #include "nl_tudelft_ewi_abs_nonnenmacher_NativeParquetReader.h"
+#include "nl_tudelft_ewi_abs_nonnenmacher_ParquetReaderEvaluator.h"
 #include "DataSetParquetReader.h"
 
 #include "utils.h"
@@ -69,12 +70,7 @@ DataSetParquetReader::DataSetParquetReader(const std::shared_ptr<arrow::MemoryPo
 
 std::shared_ptr<arrow::RecordBatch> DataSetParquetReader::ReadNext() {
 
-    auto t1 = std::chrono::steady_clock::now();
     batch = recordBatchIter->Next().ValueOrDie();
-    auto t2 = std::chrono::steady_clock::now();
-    auto d_milli = std::chrono::duration_cast<std::chrono::milliseconds>( t2 - t1 ).count();
-
-    duration = duration + d_milli;
 
     if (batch != recordBatchEnd) {
         return batch;
@@ -82,7 +78,6 @@ std::shared_ptr<arrow::RecordBatch> DataSetParquetReader::ReadNext() {
 
     const std::shared_ptr<ScanTask> &nextScanTask = scan_task_it->Next().ValueOrDie();
     if (nextScanTask == scanTaskEnd) {
-        std::cout << "Duration: " << duration << std::endl;
         return recordBatchEnd;
     }
 
@@ -119,8 +114,7 @@ JNIEXPORT jboolean JNICALL Java_nl_tudelft_ewi_abs_nonnenmacher_NativeParquetRea
     std::shared_ptr<arrow::RecordBatch> out_batch = datasetParquetReader->ReadNext();
 
     // check if end reached
-    std::shared_ptr<arrow::RecordBatch> end = arrow::IterationTraits<std::shared_ptr<arrow::RecordBatch>>::End();
-    if (end == out_batch) {
+    if (recordBatchEnd == out_batch) {
         return false;
     }
 
@@ -169,4 +163,30 @@ JNIEXPORT jboolean JNICALL Java_nl_tudelft_ewi_abs_nonnenmacher_NativeParquetRea
 JNIEXPORT void JNICALL Java_nl_tudelft_ewi_abs_nonnenmacher_NativeParquetReader_close
         (JNIEnv *env, jobject, jlong process_ptr) {
     delete (DataSetParquetReader *) process_ptr;
+}
+
+JNIEXPORT void JNICALL Java_nl_tudelft_ewi_abs_nonnenmacher_ParquetReaderEvaluator_readWholeFileWithDefaultMemoryPool
+        (JNIEnv * env, jobject, jstring java_file_name, jbyteArray schema_file_jarr, jint num_rows){
+
+    std::string file_name = get_java_string(env, java_file_name);
+
+    jsize schema_file_len = env->GetArrayLength(schema_file_jarr);
+    jbyte *schema_file_bytes = env->GetByteArrayElements(schema_file_jarr, 0);
+    std::shared_ptr<arrow::Schema> schema_file = ReadSchemaFromProtobufBytes(schema_file_bytes, schema_file_len);
+
+    DataSetParquetReader reader(arrow::MemoryPool::CreateDefault(), file_name, schema_file, schema_file, (int) num_rows);
+
+    auto start_time = std::chrono::steady_clock::now();
+
+    std::shared_ptr<arrow::RecordBatch> out_batch;
+
+    do{
+        out_batch = reader.ReadNext();
+        // check if end reached
+    }while( recordBatchEnd != out_batch);
+
+    auto end_time = std::chrono::steady_clock::now();
+    auto d_milli = std::chrono::duration_cast<std::chrono::milliseconds>( end_time - start_time ).count();
+
+    std::cout << "Duration (CPP):" << d_milli << std::endl;
 }
