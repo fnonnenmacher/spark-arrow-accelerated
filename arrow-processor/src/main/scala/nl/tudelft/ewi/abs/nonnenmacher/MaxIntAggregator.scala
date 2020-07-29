@@ -8,16 +8,20 @@ import scala.collection.JavaConverters._
 
 class MaxIntAggregator {
 
-  def aggregate(rootIn: VectorSchemaRoot): Int = {
+  def aggregate(rootIn: VectorSchemaRoot): Array[Int] = {
     NativeLibraryLoader.load()
 
+
     val buffersIn = BufferDescriptor(rootIn)
-    val r = agg(buffersIn.rowCount, buffersIn.addresses, buffersIn.sizes)
+    val results = new Array[Int](rootIn.getFieldVectors.size)
+
+    agg(buffersIn.rowCount, buffersIn.addresses, buffersIn.sizes, results)
+
     buffersIn.close()
-    r
+    results
   }
 
-  @native private def agg(rowNumbers: Int, inBufAddrs: Array[Long], inBufSized: Array[Long]): Int;
+  @native private def agg(rowNumbers: Int, inBufAddrs: Array[Long], inBufSized: Array[Long], results :Array[Int]): Unit
 
   private case class BufferDescriptor(root: VectorSchemaRoot) {
     def close(): Any = recordBatch.close();

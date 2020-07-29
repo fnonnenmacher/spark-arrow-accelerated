@@ -104,4 +104,11 @@ class FletcherExampleSuite extends FunSuite with SparkSessionGenerator {
 
     assertArrowMemoryIsFreed()
   }
+
+  test("execution"){
+    val res = spark.sql(s""" SELECT SUM(`number`) as `number`
+                                   | FROM parquet.`../data/taxi-uncompressed.parquet`
+                                   | WHERE `string` rlike 'Blue Ribbon Taxi Association Inc.' """.stripMargin)
+    println(res.collect())
+  }
 }

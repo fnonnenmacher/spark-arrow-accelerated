@@ -24,12 +24,12 @@ case class SimpleMaxAggregationExec(override val child: SparkPlan) extends Unary
         val start = System.nanoTime()
 
         val root = batch.toArrow
-        val res = maxIntAggregator.aggregate(root)
+        val res: Array[Int] = maxIntAggregator.aggregate(root)
 
         aggregationTime += System.nanoTime() - start
 
-        val ints: Array[Any] = Array(res)
-        new GenericInternalRow(ints)
+        val array: Array[Any] = res.map(i => new Integer(i))
+        new GenericInternalRow(array);
       }
 
       new TimeMeasuringIterator(iter, processing)

@@ -19,6 +19,7 @@ FletcherProcessorCpp::FletcherProcessorCpp(std::shared_ptr<arrow::Schema> input_
     // Initialize the platform.
     ASSERT_FLETCHER_OK(platform->Init());
 
+
     //assert Schema is OK
     //TODO: 1 column string, the other long, both not null
 //    std::shared_ptr<arrow::Field> string_field = schema->field(0);
@@ -46,43 +47,43 @@ long trivialCpuVersion(const std::shared_ptr<arrow::RecordBatch> &record_batch) 
 long FletcherProcessorCpp::reduce(const std::shared_ptr<arrow::RecordBatch> &record_batch) {
 
     // Create a context for our application on the platform.
-    std::shared_ptr<fletcher::Context> context;
-    ASSERT_FLETCHER_OK(fletcher::Context::Make(&context, platform));
+//   std::shared_ptr<fletcher::Context> context;
+//   ASSERT_FLETCHER_OK(fletcher::Context::Make(&context, platform));
 
-    // Queue the recordbatch to our context.
-    ASSERT_FLETCHER_OK(context->QueueRecordBatch(record_batch));
+//   // Queue the recordbatch to our context.
+//   ASSERT_FLETCHER_OK(context->QueueRecordBatch(record_batch));
 
-    // "Enable" the context, potentially copying the recordbatch to the device. This depends on your platform.
-    // AWS EC2 F1 requires a copy, but OpenPOWER SNAP doesn't.
-    ASSERT_FLETCHER_OK(context->Enable());
+//   // "Enable" the context, potentially copying the recordbatch to the device. This depends on your platform.
+//   // AWS EC2 F1 requires a copy, but OpenPOWER SNAP doesn't.
+//   ASSERT_FLETCHER_OK(context->Enable());
 
-    // Create a kernel based on the context.
-    fletcher::Kernel kernel(context);
+//   // Create a kernel based on the context.
+//   fletcher::Kernel kernel(context);
 
-    // Reset the kernel.
-    ASSERT_FLETCHER_OK(kernel.Reset());
+//   // Reset the kernel.
+//   ASSERT_FLETCHER_OK(kernel.Reset());
 
-    // Start the kernel.
-    ASSERT_FLETCHER_OK(kernel.Start());
+//   // Start the kernel.
+//   ASSERT_FLETCHER_OK(kernel.Start());
 
-    // Wait for the kernel to finish.
-    ASSERT_FLETCHER_OK(kernel.WaitForFinish());
+//   // Wait for the kernel to finish.
+//   ASSERT_FLETCHER_OK(kernel.WaitForFinish());
 
-    uint32_t return_value_0;
-    uint32_t return_value_1;
+//   uint32_t return_value_0;
+//   uint32_t return_value_1;
 
-    // Obtain the return value.
-    ASSERT_FLETCHER_OK(kernel.GetReturn(&return_value_0, &return_value_1));
+//   // Obtain the return value.
+//   ASSERT_FLETCHER_OK(kernel.GetReturn(&return_value_0, &return_value_1));
 
-    long result = *reinterpret_cast<int64_t *>(&return_value_0);
+//   long result = *reinterpret_cast<int64_t *>(&return_value_0);
 
-    std::cout << "RESULT returned from Fletcher: " << *reinterpret_cast<int64_t *>(&return_value_0) << std::endl;
+//    std::cout << "RESULT returned from Fletcher: " << *reinterpret_cast<int64_t *>(&return_value_0) << std::endl;
 
     //The echo platform does not return a proper value -> fallback to cpu impl
-    if (platform->name() == "echo") {
+    //if (platform->name() == "echo") {
         return trivialCpuVersion(record_batch);
-    }
-    return result;
+    //}
+    //return result;
 }
 
 JNIEXPORT jlong JNICALL Java_nl_tudelft_ewi_abs_nonnenmacher_FletcherProcessor_initFletcherProcessor

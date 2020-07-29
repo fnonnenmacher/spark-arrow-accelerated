@@ -19,6 +19,7 @@ private:
     std::shared_ptr<arrow::dataset::ScanTaskIterator> scan_task_it;
     std::shared_ptr<arrow::RecordBatchIterator> recordBatchIter;
     std::shared_ptr<arrow::RecordBatch> batch;
+    long long duration = 0;
 public:
     DataSetParquetReader(const std::shared_ptr<arrow::MemoryPool> &memory_pool,
                          const std::string &file_name, const std::shared_ptr<arrow::Schema> &schema_file,

@@ -1,12 +1,13 @@
 package nl.tudelft.ewi.abs.nonnenmacher
 
 import io.netty.buffer.ArrowBuf
-import org.apache.arrow.memory.BufferAllocator
+import org.apache.arrow.memory.{BaseAllocator, BufferAllocator}
 
 import scala.collection.mutable
 
 class JavaMemoryPoolServer(val allocator: BufferAllocator) {
 
+  private val minAllocationSize= 4096;
   private val buffers: mutable.Map[Long, ArrowBuf] = mutable.Map()
   private val emptyBuffer = allocator.getEmpty
 
@@ -17,12 +18,13 @@ class JavaMemoryPoolServer(val allocator: BufferAllocator) {
       return allocator.getEmpty.memoryAddress();
     }
 
-    val buffer = allocator.buffer(size)
+    val buffer = allocator.buffer(Math.max(BaseAllocator.nextPowerOfTwo(size), minAllocationSize))
     buffers.put(buffer.memoryAddress, buffer)
     buffer.memoryAddress()
   }
 
   def reallocate(oldAddr: Long, newSize: Long): Long = {
+
     // Reallocating of empty buffer
     if (oldAddr.equals(emptyBuffer.memoryAddress())){
       return allocate(newSize)
@@ -32,12 +34,16 @@ class JavaMemoryPoolServer(val allocator: BufferAllocator) {
     val oldCapacity = oldBuffer.capacity()
 
     val newBuffer = if (oldCapacity < newSize) {
-      val newBuf = allocator.buffer(newSize)
+//      println(s"Reallocate called. From $oldCapacity to $newSize")
+
+      val newCapacity = BaseAllocator.nextPowerOfTwo(Math.max(newSize, oldCapacity * 2))
+
+      val newBuf = allocator.buffer(newCapacity)
       newBuf.setBytes(0, oldBuffer, 0, oldBuffer.capacity())
       oldBuffer.close()
       newBuf
     } else {
-      oldBuffer.capacity(newSize)
+      oldBuffer
     }
 
     buffers.put(newBuffer.memoryAddress, newBuffer)

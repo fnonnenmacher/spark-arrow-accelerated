@@ -5,7 +5,7 @@ import org.apache.spark.sql.catalyst.rules.Rule
 import org.apache.spark.sql.execution.{ColumnarRule, FilterExec, ProjectExec, SparkPlan}
 
 
-object ProjectionOnGandivaExtension extends (SparkSessionExtensions => Unit) {
+object GandivaExtension extends (SparkSessionExtensions => Unit) {
   def apply(e: SparkSessionExtensions): Unit = {
     e.injectColumnar(_ => ProjectionOnGandivaStrategy)
   }

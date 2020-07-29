@@ -1,7 +1,7 @@
 package nl.tudelft.ewi.abs.nonnenmacher
 
 import nl.tudelft.ewi.abs.nonnenmacher.columnar.ArrowColumnarExtension
-import nl.tudelft.ewi.abs.nonnenmacher.gandiva.{GandivaFilterExec, GandivaProjectExec, ProjectionOnGandivaExtension}
+import nl.tudelft.ewi.abs.nonnenmacher.gandiva.{GandivaFilterExec, GandivaProjectExec, GandivaExtension}
 import nl.tudelft.ewi.abs.nonnenmacher.parquet.{ArrowParquetReaderExtension, ArrowParquetSourceScanExec}
 import org.apache.spark.sql.{DataFrame, SparkSessionExtensions}
 import org.junit.runner.RunWith
@@ -13,7 +13,7 @@ class ParquetAndGandivaSuite extends FunSuite with SparkSessionGenerator {
 
   override def withExtensions: Seq[SparkSessionExtensions => Unit] =
     Seq(ArrowParquetReaderExtension,
-      ProjectionOnGandivaExtension,
+      GandivaExtension,
       ArrowColumnarExtension)
 
   test("read from parquet format") {
@@ -87,7 +87,7 @@ class ParquetAndGandivaSuite extends FunSuite with SparkSessionGenerator {
     assertArrowMemoryIsFreed()
   }
 
-  test("maxOfSumOf10Ints") {
+  ignore("maxOfSumOf10Ints") {
     val sqlDF = spark.sql(s"SELECT `x1` + `x2` + `x3` + `x4` + `x5` + `x6` + `x7` + `x8` + `x9` + `x10` AS sum " +
       s"FROM parquet.`../data/million-times-10-ints.parquet` " +
       "WHERE `x1` < `x2` AND `x3` < `x4`")

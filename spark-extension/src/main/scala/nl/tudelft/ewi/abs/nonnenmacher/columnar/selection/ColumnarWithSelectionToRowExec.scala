@@ -3,7 +3,6 @@ package nl.tudelft.ewi.abs.nonnenmacher.columnar.selection
 import nl.tudelft.ewi.abs.nonnenmacher.utils.StartStopMeasurment
 import org.apache.arrow.gandiva.evaluator.SelectionVector
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.ArrowMemoryToSparkMemoryExec
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.UnsafeProjection
 import org.apache.spark.sql.execution.metric.{SQLMetric, SQLMetrics}
@@ -48,7 +47,7 @@ class ColumnarWithSelectionToRowExec(override val child: SparkPlan) extends Colu
     if (!super.equals(other)) {
       return false
     }
-    other.isInstanceOf[ArrowMemoryToSparkMemoryExec]
+    other.isInstanceOf[ColumnarWithSelectionToRowExec]
   }
 
   override def hashCode(): Int = super.hashCode()
@@ -72,4 +71,5 @@ class ColumnarWithSelectionToRowExec(override val child: SparkPlan) extends Colu
       columnarBatch.getRow(nextIndex)
     }
   }
+
 }

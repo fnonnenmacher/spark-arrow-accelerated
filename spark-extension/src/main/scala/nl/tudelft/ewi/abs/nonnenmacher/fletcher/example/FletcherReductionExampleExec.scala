@@ -35,7 +35,6 @@ case class FletcherReductionExampleExec(out: Seq[Attribute], child: SparkPlan) e
       var batchId: Long = 0
       batches
         .map { x => start = System.nanoTime(); x }
-        .map { x => batchId = batchId + 1; println(s"Batch$batchId Num Rows:${x.numRows()}"); x }
         .map(_.toArrow)
         .mapAndAutoClose(fletcherReductionProcessor)
         .map(toRow)

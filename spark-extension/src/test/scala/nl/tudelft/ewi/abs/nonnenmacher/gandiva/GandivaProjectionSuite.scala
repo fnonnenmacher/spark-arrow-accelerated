@@ -12,7 +12,7 @@ import org.scalatest.junit.JUnitRunner
 @RunWith(classOf[JUnitRunner])
 class GandivaProjectionSuite extends FunSuite with SparkSessionGenerator {
 
-  override def withExtensions: Seq[SparkSessionExtensions => Unit] = Seq(ProjectionOnGandivaExtension, ArrowColumnarExtension)
+  override def withExtensions: Seq[SparkSessionExtensions => Unit] = Seq(GandivaExtension, ArrowColumnarExtension)
 
   test("that a simple addition query can be executed on Gandiva") {
 

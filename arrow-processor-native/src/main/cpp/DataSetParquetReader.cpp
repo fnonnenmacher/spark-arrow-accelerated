@@ -68,7 +68,13 @@ DataSetParquetReader::DataSetParquetReader(const std::shared_ptr<arrow::MemoryPo
 }
 
 std::shared_ptr<arrow::RecordBatch> DataSetParquetReader::ReadNext() {
+
+    auto t1 = std::chrono::steady_clock::now();
     batch = recordBatchIter->Next().ValueOrDie();
+    auto t2 = std::chrono::steady_clock::now();
+    auto d_milli = std::chrono::duration_cast<std::chrono::milliseconds>( t2 - t1 ).count();
+
+    duration = duration + d_milli;
 
     if (batch != recordBatchEnd) {
         return batch;
@@ -76,6 +82,7 @@ std::shared_ptr<arrow::RecordBatch> DataSetParquetReader::ReadNext() {
 
     const std::shared_ptr<ScanTask> &nextScanTask = scan_task_it->Next().ValueOrDie();
     if (nextScanTask == scanTaskEnd) {
+        std::cout << "Duration: " << duration << std::endl;
         return recordBatchEnd;
     }
 
@@ -105,12 +112,6 @@ JNIEXPORT jlong JNICALL Java_nl_tudelft_ewi_abs_nonnenmacher_NativeParquetReader
 JNIEXPORT jboolean JNICALL Java_nl_tudelft_ewi_abs_nonnenmacher_NativeParquetReader_readNext
         (JNIEnv *env, jobject, jlong process_ptr, jlongArray jarr_vector_lengths, jlongArray jarr_vector_null_counts,
          jlongArray jarr_buf_addrs) {
-
-
-
-
-
-
 
     DataSetParquetReader *datasetParquetReader = (DataSetParquetReader *) process_ptr;
 

@@ -16,7 +16,7 @@ class SimpleMaxAggregationSuite extends FunSuite with SparkSessionGenerator {
 
   test("read from parquet format") {
 
-    val sqlDF: DataFrame = spark.sql("SELECT MAX(`int-field`) FROM parquet.`../data/big-example.parquet`")
+    val sqlDF: DataFrame = spark.sql("SELECT MAX(`x`), MAX(`N2x`), MAX(`Nx3`) FROM parquet.`../data/500-million-int-triples-uncompressed.parquet`")
 
     sqlDF.printSchema()
     println("Direct Plan:")

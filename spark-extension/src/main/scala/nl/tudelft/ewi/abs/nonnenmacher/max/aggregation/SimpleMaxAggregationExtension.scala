@@ -24,13 +24,6 @@ object SimpleMaxAggregationExtension extends (SparkSessionExtensions => Unit) {
       resultExpressions,
       ColumnarToRowExec(child)) => {
 
-        println("requiredChildDistributionExpressions:" + requiredChildDistributionExpressions)
-        println("groupingExpressions:" + groupingExpressions)
-        println("aggregateExpressions:" + aggregateExpressions)
-        println("aggregateAttributes:" + aggregateAttributes)
-        println("initialInputBufferOffset:" + initialInputBufferOffset)
-        println("resultExpressions:" + resultExpressions)
-
         if (isApplicable(requiredChildDistributionExpressions,
           groupingExpressions,
           aggregateExpressions,
@@ -56,19 +49,21 @@ object SimpleMaxAggregationExtension extends (SparkSessionExtensions => Unit) {
                      aggregateAttributes: Seq[Attribute],
                      initialInputBufferOffset: Int,
                      resultExpressions: Seq[NamedExpression]): Boolean = {
+//
+//      if (requiredChildDistributionExpressions.isDefined) return false
+//      if (groupingExpressions.nonEmpty) return false
+//      if (aggregateExpressions.size != 1) return false
+//      if (aggregateAttributes.size != 1) return false
+//      if (resultExpressions.size != 1) return false
+//      if (initialInputBufferOffset != 0) return false
+//
+//      val aggregateFunction = aggregateExpressions.head.aggregateFunction
+//
+//      if (!aggregateFunction.isInstanceOf[Max]) return false
+//      if (!aggregateFunction.asInstanceOf[Max].child.isInstanceOf[AttributeReference]) return false
+//      aggregateFunction.asInstanceOf[Max].child.asInstanceOf[AttributeReference].dataType.isInstanceOf[IntegerType]
 
-      if (requiredChildDistributionExpressions.isDefined) return false
-      if (groupingExpressions.nonEmpty) return false
-      if (aggregateExpressions.size != 1) return false
-      if (aggregateAttributes.size != 1) return false
-      if (resultExpressions.size != 1) return false
-      if (initialInputBufferOffset != 0) return false
-
-      val aggregateFunction = aggregateExpressions.head.aggregateFunction
-
-      if (!aggregateFunction.isInstanceOf[Max]) return false
-      if (!aggregateFunction.asInstanceOf[Max].child.isInstanceOf[AttributeReference]) return false
-      aggregateFunction.asInstanceOf[Max].child.asInstanceOf[AttributeReference].dataType.isInstanceOf[IntegerType]
+      true
     }
   }
 
