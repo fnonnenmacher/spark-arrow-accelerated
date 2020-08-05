@@ -41,4 +41,14 @@ To run individual tests:
 
 * `spark-extension`: this code integrates with spark and is replacing the default strategy of generating the execution plan.
 * `arrow-processor` scala part which forward the Arrow vectors to the native code
-* `arrow-processor-native` code that is responsible for the execution of the processing steps. For now it calls different C++ components e.g. the arrow parquet reader & gandiva) later it should call a Fletcher runtime. 
+* `arrow-processor-native` code that is responsible for the execution of the processing steps. For now it calls different C++ components e.g. the arrow parquet reader & gandiva) later it should call a Fletcher runtime.
+
+## Performance Tests
+* All test data is generated with the test [`DataGenerator`](spark-extension/src/test/scala/nl/tudelft/ewi/abs/nonnenmacher/DataGenerator.scala)  
+* The performance scenarios are defined in the [`jmh`](spark-extension/src/test/scala/nl/tudelft/ewi/abs/nonnenmacher) package
+* To execute the JMH tests execute the following commands
+```shell script
+./gradlew jmhJar #builds the jmh jar
+mkdir -p spark-extension/build/reports/jmh/ # creates output directory
+./spark-extension/build/libs/run_benchmark.sh # executes tests and passes configuration parameters
+```
